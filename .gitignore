@@ -1,0 +1,5 @@
+# Clangd
+compile_commands.json
+
+# Build output
+bin
