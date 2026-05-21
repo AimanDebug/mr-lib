@@ -35,9 +35,19 @@ void test_mr_attr_set_reducer_threads(void) {
     TEST_ASSERT_EQUAL_INT(-1, mr_attr_set_reducer_threads(NULL, 2));
 }
 
+void test_mr_attr_set_queue_size(void) {
+    mr_attr_t attr;
+    mr_attr_init(&attr);
+    TEST_ASSERT_EQUAL_INT(0, mr_attr_set_queue_size(&attr, 200));
+    TEST_ASSERT_EQUAL_size_t(200, attr.queue_size);
+    TEST_ASSERT_EQUAL_INT(-1, mr_attr_set_queue_size(&attr, 0));
+    TEST_ASSERT_EQUAL_INT(-1, mr_attr_set_queue_size(NULL, 200));
+}
+
 void test_libmr(void) {
     RUN_TEST(test_mr_attr_init_success);
     RUN_TEST(test_mr_attr_init_fail);
     RUN_TEST(test_mr_attr_set_mapper_threads);
     RUN_TEST(test_mr_attr_set_reducer_threads);
+    RUN_TEST(test_mr_attr_set_queue_size);
 }

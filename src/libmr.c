@@ -43,3 +43,13 @@ int mr_attr_set_reducer_threads(mr_attr_t* attr, size_t n) {
   attr->reducer_threads = n;
   return 0;
 }
+
+int mr_attr_set_queue_size(mr_attr_t* attr, size_t n) {
+  if (attr == NULL || n < 1) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  attr->queue_size = n;
+  return 0;
+}
