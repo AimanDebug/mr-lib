@@ -4,7 +4,7 @@ GNUMAKEFLAGS += --no-print-directory
 CC = gcc
 AR = ar
 ARFLAGS = rcs
-CFLAGS = $(warning_flags) $(addprefix -I, $(include_dirs))
+CFLAGS = $(warning_flags) $(addprefix -I, $(include_dirs)) -std=c11
 BINARY = libmr.a
 
 include_dirs = include
