@@ -23,3 +23,13 @@ int mr_attr_init(mr_attr_t* attr) {
 
   return 0;
 }
+
+int mr_attr_set_mapper_threads(mr_attr_t* attr, size_t n) {
+  if (attr == NULL || n < 1) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  attr->mapper_threads = n;
+  return 0;
+}
