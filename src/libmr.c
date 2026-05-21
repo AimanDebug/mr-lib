@@ -33,3 +33,13 @@ int mr_attr_set_mapper_threads(mr_attr_t* attr, size_t n) {
   attr->mapper_threads = n;
   return 0;
 }
+
+int mr_attr_set_reducer_threads(mr_attr_t* attr, size_t n) {
+  if (attr == NULL || n < 1) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  attr->reducer_threads = n;
+  return 0;
+}
