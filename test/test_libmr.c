@@ -44,10 +44,20 @@ void test_mr_attr_set_queue_size(void) {
     TEST_ASSERT_EQUAL_INT(-1, mr_attr_set_queue_size(NULL, 200));
 }
 
+void test_mr_attr_set_log_file(void) {
+    mr_attr_t attr;
+    mr_attr_init(&attr);
+    const char* log = "custom.log";
+    TEST_ASSERT_EQUAL_INT(0, mr_attr_set_log_file(&attr, log));
+    TEST_ASSERT_EQUAL_STRING(log, attr.log_file);
+    TEST_ASSERT_EQUAL_INT(-1, mr_attr_set_log_file(NULL, log));
+}
+
 void test_libmr(void) {
     RUN_TEST(test_mr_attr_init_success);
     RUN_TEST(test_mr_attr_init_fail);
     RUN_TEST(test_mr_attr_set_mapper_threads);
     RUN_TEST(test_mr_attr_set_reducer_threads);
     RUN_TEST(test_mr_attr_set_queue_size);
+    RUN_TEST(test_mr_attr_set_log_file);
 }

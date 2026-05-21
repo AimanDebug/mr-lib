@@ -6,6 +6,7 @@
  * This file contains the implementation of the functions declared in libmr.h.
  */
 
+#include <assert.h>
 #include <libmr.h>
 #include <config.h>
 #include <errno.h>
@@ -51,5 +52,24 @@ int mr_attr_set_queue_size(mr_attr_t* attr, size_t n) {
   }
 
   attr->queue_size = n;
+  return 0;
+}
+
+int mr_attr_set_log_file(mr_attr_t* attr, const char* path) {
+  if (attr == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (path == NULL)
+    path = MR_DEFAULT_LOG_FILE;
+
+  // Empty path is not allowed
+  if (*path == '\0') {
+    errno = EINVAL;
+    return -1;
+  }
+
+  attr->log_file = path;
   return 0;
 }
