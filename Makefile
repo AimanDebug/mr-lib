@@ -1,43 +1,44 @@
+# If using GNU Make do print the directory being processed
+GNUMAKEFLAGS += --no-print-directory
+
 CC = gcc
 AR = ar
 ARFLAGS = rcs
-CFLAGS = -Wall -Wextra -Wpedantic -Werror -Iinclude
+CFLAGS = $(warning_flags) $(addprefix -I, $(include_dirs))
+BINARY = libmr.a
 
-SRC_DIR = src
-BIN_DIR = bin
-INT_DIR_NAME = intermediates
-LIB_NAME = libmr.a
+include_dirs = include
+warning_flags = -Wall -Wextra -Wpedantic -Werror
 
-SRCS = $(wildcard $(SRC_DIR)/*.c)
+src_dir = src
+bin_dir = bin
+int_dir = $(bin_dir)/intermediates
 
-.PHONY: all debug release clean
+sources = $(wildcard $(src_dir)/*.c)
+objects = $(sources:$(src_dir)/%.c=$(int_dir)/%.o)
+
+.PHONY: all debug release build prepare clean
 
 all: debug release
 
-# Target-specific variables (inherited by prerequisites)
-debug:   CFLAGS += -g -Og -ggdb
-release: CFLAGS += -O3
+debug:
+	@$(MAKE) build bin_dir=$(bin_dir)/debug \
+		CFLAGS="$(CFLAGS) -g -Og -ggdb"
 
-debug:   $(BIN_DIR)/debug/$(LIB_NAME)
-release: $(BIN_DIR)/release/$(LIB_NAME)
+release:
+	@$(MAKE) build bin_dir=$(bin_dir)/release \
+		CFLAGS="$(CFLAGS) -O3"
 
-# Prerequisite definitions
-$(BIN_DIR)/debug/$(LIB_NAME):   $(SRCS:$(SRC_DIR)/%.c=$(BIN_DIR)/debug/$(INT_DIR_NAME)/%.o)
-$(BIN_DIR)/release/$(LIB_NAME): $(SRCS:$(SRC_DIR)/%.c=$(BIN_DIR)/release/$(INT_DIR_NAME)/%.o)
+build: prepare $(bin_dir)/$(BINARY)
 
-# Shared recipe for the libraries
-$(BIN_DIR)/debug/$(LIB_NAME) $(BIN_DIR)/release/$(LIB_NAME):
-	@mkdir -p $(dir $@)
+$(bin_dir)/$(BINARY): $(objects)
 	$(AR) $(ARFLAGS) $@ $^
 
-# Rules for object files (specific to build type to handle directory structure)
-$(BIN_DIR)/debug/$(INT_DIR_NAME)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(dir $@)
+$(int_dir)/%.o: $(src_dir)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BIN_DIR)/release/$(INT_DIR_NAME)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+prepare:
+	@mkdir -p $(bin_dir) $(int_dir)
 
 clean:
-	rm -rf $(BIN_DIR)
+	rm -rf $(bin_dir)/*
