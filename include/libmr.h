@@ -169,7 +169,7 @@ int mr_attr_set_queue_size(mr_attr_t* attr, size_t n);
 /**
  * @brief Sets the path for the log file.
  * @param attr Pointer to the attributes structure.
- * @param path Path to the log file.
+ * @param path Path to the log file. If NULL, resets to the default log file name.
  * @return 0 on success, -1 on error.
  */
 int mr_attr_set_log_file(mr_attr_t* attr, const char* path);
