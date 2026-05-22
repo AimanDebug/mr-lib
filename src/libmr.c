@@ -10,6 +10,9 @@
 #include <config.h>
 #include <errno.h>
 #include <libmr.h>
+#include <stdlib.h>
+
+#include "mr.h"
 
 int mr_attr_init(mr_attr_t* attr) {
   if (attr == NULL) {
@@ -92,8 +95,42 @@ int mr_attr_destroy(mr_attr_t* attr) {
     return -1;
   }
 
-  // NOTE: no dynamic memory is allocated for the log_file, 
+  // NOTE: no dynamic memory is allocated for the log_file,
   // so we don't need to free it. Provided for future extensibility.
+
+  return 0;
+}
+
+int mr_create(mr_t* mr, const mr_attr_t* attr, mr_mapper_t mapper,
+              mr_reducer_t reducer, void* user_arg) {
+  if (attr == NULL || !mr_attr_check(attr) || mapper == NULL ||
+      reducer == NULL) {
+    errno = EINVAL; // Invalid argument
+    return -1;
+  }
+
+  // Dinamically allocate memory for the mr structure
+  if ((*(mr) = (mr_t)malloc(sizeof(struct mr))) == NULL) {
+    // errno is set by malloc
+    return -1;
+  }
+
+  if (mr_init(*mr, attr, mapper, reducer, user_arg) == -1) {
+    free(*mr); // free preserves errno
+    return -1;
+  }
+
+  return 0;
+}
+
+int mr_destroy(mr_t mr) {
+  if (mr == NULL)
+    return 0;
+
+  mr_cleanup(mr);
+
+  free(mr);
+  mr = NULL; // Avoid dangling pointer
 
   return 0;
 }
