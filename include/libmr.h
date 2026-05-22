@@ -7,6 +7,7 @@
 #ifndef LIBMR_H
 #define LIBMR_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 /**
@@ -143,12 +144,26 @@ int mr_attr_init(mr_attr_t* attr);
 int mr_attr_destroy(mr_attr_t* attr);
 
 /**
+ * @brief Checks if the number of threads for the mapper process is valid.
+ * @param n Number of threads to check.
+ * @return true if n >= 1, false otherwise.
+ */
+bool mr_attr_check_mapper_threads(size_t n);
+
+/**
  * @brief Sets the number of threads used in the mapper process.
  * @param attr Pointer to the attributes structure.
  * @param n Number of threads (must be at least 1).
  * @return 0 on success, -1 on error.
  */
 int mr_attr_set_mapper_threads(mr_attr_t* attr, size_t n);
+
+/**
+ * @brief Checks if the number of threads for the reducer process is valid.
+ * @param n Number of threads to check.
+ * @return true if n >= 1, false otherwise.
+ */
+bool mr_attr_check_reducer_threads(size_t n);
 
 /**
  * @brief Sets the number of threads used in the reducer process.
@@ -159,6 +174,13 @@ int mr_attr_set_mapper_threads(mr_attr_t* attr, size_t n);
 int mr_attr_set_reducer_threads(mr_attr_t* attr, size_t n);
 
 /**
+ * @brief Checks if the queue size is valid.
+ * @param n Queue size to check.
+ * @return true if n >= 1, false otherwise.
+ */
+bool mr_attr_check_queue_size(size_t n);
+
+/**
  * @brief Sets the maximum capacity of internal queues.
  * @param attr Pointer to the attributes structure.
  * @param n Capacity (must be at least 1).
@@ -167,12 +189,29 @@ int mr_attr_set_reducer_threads(mr_attr_t* attr, size_t n);
 int mr_attr_set_queue_size(mr_attr_t* attr, size_t n);
 
 /**
+ * @brief Checks if the log file path is valid.
+ * @param path Path to check. If NULL, the default log file name is used.
+ * @return true (provided for future extensibility)
+ */
+bool mr_attr_check_log_file(const char* path);
+
+/**
  * @brief Sets the path for the log file.
  * @param attr Pointer to the attributes structure.
  * @param path Path to the log file. If NULL, resets to the default log file name.
  * @return 0 on success, -1 on error.
  */
 int mr_attr_set_log_file(mr_attr_t* attr, const char* path);
+
+/**
+ * @brief Checks if the attributes structure is valid.
+ *
+ * @param attr Pointer to the attributes structure to check.
+ * @return true if all fields in attr are valid, false otherwise.
+ *
+ * @pre attr is not NULL.
+ */
+bool mr_attr_check(const mr_attr_t* attr);
 
 /**
  * @brief Creates a new MapReduce execution instance.

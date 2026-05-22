@@ -25,8 +25,26 @@ int mr_attr_init(mr_attr_t* attr) {
   return 0;
 }
 
+bool mr_attr_check_mapper_threads(size_t n) { return n >= 1; }
+bool mr_attr_check_reducer_threads(size_t n) { return n >= 1; }
+bool mr_attr_check_queue_size(size_t n) { return n >= 1; }
+bool mr_attr_check_log_file(const char* path) {
+  // NOTE: path validity is not checked here,
+  // as it may be created later by the framework.
+  (void)path;
+  return true;
+}
+bool mr_attr_check(const mr_attr_t* attr) {
+  assert(attr != NULL);
+
+  return mr_attr_check_mapper_threads(attr->mapper_threads) &&
+         mr_attr_check_reducer_threads(attr->reducer_threads) &&
+         mr_attr_check_queue_size(attr->queue_size) &&
+         mr_attr_check_log_file(attr->log_file);
+}
+
 int mr_attr_set_mapper_threads(mr_attr_t* attr, size_t n) {
-  if (attr == NULL || n < 1) {
+  if (attr == NULL || !mr_attr_check_mapper_threads(n)) {
     errno = EINVAL;
     return -1;
   }
@@ -36,7 +54,7 @@ int mr_attr_set_mapper_threads(mr_attr_t* attr, size_t n) {
 }
 
 int mr_attr_set_reducer_threads(mr_attr_t* attr, size_t n) {
-  if (attr == NULL || n < 1) {
+  if (attr == NULL || !mr_attr_check_reducer_threads(n)) {
     errno = EINVAL;
     return -1;
   }
@@ -46,7 +64,7 @@ int mr_attr_set_reducer_threads(mr_attr_t* attr, size_t n) {
 }
 
 int mr_attr_set_queue_size(mr_attr_t* attr, size_t n) {
-  if (attr == NULL || n < 1) {
+  if (attr == NULL || !mr_attr_check_queue_size(n)) {
     errno = EINVAL;
     return -1;
   }
@@ -56,13 +74,10 @@ int mr_attr_set_queue_size(mr_attr_t* attr, size_t n) {
 }
 
 int mr_attr_set_log_file(mr_attr_t* attr, const char* path) {
-  if (attr == NULL) {
+  if (attr == NULL || !mr_attr_check_log_file(path)) {
     errno = EINVAL;
     return -1;
   }
-
-  // NOTE: path validity is not checked here, as it will be used later when
-  // opening the file.
 
   if (path == NULL)
     path = MR_DEFAULT_LOG_FILE;
