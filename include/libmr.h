@@ -198,7 +198,8 @@ bool mr_attr_check_log_file(const char* path);
 /**
  * @brief Sets the path for the log file.
  * @param attr Pointer to the attributes structure.
- * @param path Path to the log file. If NULL, resets to the default log file name.
+ * @param path Path to the log file.
+ * If NULL, resets to the default log file name.
  * @return 0 on success, -1 on error.
  */
 int mr_attr_set_log_file(mr_attr_t* attr, const char* path);
@@ -240,7 +241,7 @@ int mr_start(mr_t mr, const char* input_path, const char* output_path);
 
 /**
  * @brief Releases all resources associated with a MapReduce instance.
- * @param mr The MapReduce handle.
+ * @param mr The MapReduce handle, if NULL does nothing.
  * @return 0 on success, -1 on error.
  */
 int mr_destroy(mr_t mr);
