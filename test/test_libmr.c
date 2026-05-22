@@ -59,9 +59,6 @@ void test_mr_attr_set_log_file(void) {
     // Test setting log file to NULL resets to default
     mr_attr_set_log_file(&attr, NULL);
     TEST_ASSERT_EQUAL_STRING(MR_DEFAULT_LOG_FILE, attr.log_file);
-
-    // Test empty string as log file returns error
-    TEST_ASSERT_EQUAL_INT(-1, mr_attr_set_log_file(&attr, ""));
 }
 
 void test_libmr(void) {

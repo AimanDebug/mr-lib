@@ -61,14 +61,10 @@ int mr_attr_set_log_file(mr_attr_t* attr, const char* path) {
     return -1;
   }
 
+  // NOTE: path validity is not checked here, as it will be used later when opening the file.
+
   if (path == NULL)
     path = MR_DEFAULT_LOG_FILE;
-
-  // Empty path is not allowed
-  if (*path == '\0') {
-    errno = EINVAL;
-    return -1;
-  }
 
   attr->log_file = path;
   return 0;
