@@ -7,9 +7,9 @@
  */
 
 #include <assert.h>
-#include <libmr.h>
 #include <config.h>
 #include <errno.h>
+#include <libmr.h>
 
 int mr_attr_init(mr_attr_t* attr) {
   if (attr == NULL) {
@@ -61,7 +61,8 @@ int mr_attr_set_log_file(mr_attr_t* attr, const char* path) {
     return -1;
   }
 
-  // NOTE: path validity is not checked here, as it will be used later when opening the file.
+  // NOTE: path validity is not checked here, as it will be used later when
+  // opening the file.
 
   if (path == NULL)
     path = MR_DEFAULT_LOG_FILE;
@@ -76,8 +77,8 @@ int mr_attr_destroy(mr_attr_t* attr) {
     return -1;
   }
 
-  // NOTE: no dynamic memory is allocated for the log_file, so we don't need to free it.
-  // Provided for future extensibility.
+  // NOTE: no dynamic memory is allocated for the log_file, 
+  // so we don't need to free it. Provided for future extensibility.
 
   return 0;
 }
