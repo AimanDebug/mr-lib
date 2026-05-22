@@ -61,6 +61,16 @@ void test_mr_attr_set_log_file(void) {
     TEST_ASSERT_EQUAL_STRING(MR_DEFAULT_LOG_FILE, attr.log_file);
 }
 
+void test_mr_attr_destroy_success(void) {
+    mr_attr_t attr;
+    mr_attr_init(&attr);
+    TEST_ASSERT_EQUAL_INT(0, mr_attr_destroy(&attr));
+}
+
+void test_mr_attr_destroy_fail(void) {
+    TEST_ASSERT_EQUAL_INT(-1, mr_attr_destroy(NULL));
+}
+
 void test_libmr(void) {
     RUN_TEST(test_mr_attr_init_success);
     RUN_TEST(test_mr_attr_init_fail);
@@ -68,4 +78,6 @@ void test_libmr(void) {
     RUN_TEST(test_mr_attr_set_reducer_threads);
     RUN_TEST(test_mr_attr_set_queue_size);
     RUN_TEST(test_mr_attr_set_log_file);
+    RUN_TEST(test_mr_attr_destroy_success);
+    RUN_TEST(test_mr_attr_destroy_fail);
 }

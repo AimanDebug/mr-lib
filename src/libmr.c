@@ -69,3 +69,15 @@ int mr_attr_set_log_file(mr_attr_t* attr, const char* path) {
   attr->log_file = path;
   return 0;
 }
+
+int mr_attr_destroy(mr_attr_t* attr) {
+  if (attr == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  // NOTE: no dynamic memory is allocated for the log_file, so we don't need to free it.
+  // Provided for future extensibility.
+
+  return 0;
+}
