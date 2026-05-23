@@ -40,6 +40,27 @@ void mr_cleanup(mr_t mr) {
   free((void*)mr->attr.log_file);
 }
 
+int mr_run(mr_t mr, const char* input_path, const char* output_path) {
+  assert(mr != NULL);
+  assert(input_path != NULL);
+  assert(output_path != NULL);
+
+  SYSCALL_CHECK(mr_log_init(mr->attr.log_file), return -1);
+
+  SYSCALL_CHECK(
+      mr_log_info("Main", "",
+                  "Starting MapReduce job with input: %s and output: %s",
+                  input_path, output_path),
+      {
+        mr_log_destroy();
+        return -1;
+      });
+
+  SYSCALL_CHECK(mr_log_destroy(), return -1);
+
+  return 0;
+}
+
 bool mr_attr_check_mapper_threads(size_t n) { return n >= 1; }
 bool mr_attr_check_reducer_threads(size_t n) { return n >= 1; }
 bool mr_attr_check_queue_size(size_t n) { return n >= 1; }

@@ -57,6 +57,22 @@ int mr_init(mr_t mr, const mr_attr_t* attr, mr_mapper_t mapper,
 void mr_cleanup(mr_t mr);
 
 /**
+ * @brief Runs the MapReduce job with the specified input and output paths.
+ *
+ * @param mr Pointer to initialized MapReduce execution instance.
+ * @param input_path Path to the input data for the MapReduce job.
+ * @param output_path Path where the output of the MapReduce job should be
+ * written.
+ *
+ * @return 0 on success, -1 on error with errno set appropriately.
+ *
+ * @pre - mr is not NULL and has been initialized,
+ *  - input_path is not NULL,
+ *  - output_path is not NULL.
+ */
+int mr_run(mr_t mr, const char* input_path, const char* output_path);
+
+/**
  * @brief Checks if the number of mapper threads is valid.
  */
 bool mr_attr_check_mapper_threads(size_t n);
