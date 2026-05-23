@@ -2,11 +2,11 @@
  * @brief Configuration for the MapReduce framework.
  * @author Adnaan Juma
  */
-#include <assert.h>
-#include <stddef.h>
-
 #ifndef CONFIG_H
 #define CONFIG_H
+
+#include <assert.h>
+#include <stddef.h>
 
 #ifndef MR_DEFAULT_MAPPER_THREADS
 #define MR_DEFAULT_MAPPER_THREADS 4
