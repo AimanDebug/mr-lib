@@ -4,7 +4,7 @@
 
 ## Project Status
 
-- [x] Basic API definitions (`libmr.h`)
+- [x] Basic API definitions (`mr.h`)
 - [x] Attribute initialization and configuration
 - [ ] Mapper and Reducer thread management
 - [ ] Internal queue coordination

@@ -1,5 +1,5 @@
 #include <unity.h>
-#include "test_libmr.h"
+#include "test_mr.h"
 
 void setUp(void) {
     // set stuff up here
@@ -11,6 +11,6 @@ void tearDown(void) {
 
 int main(void) {
     UNITY_BEGIN();
-    test_libmr();
+    test_mr();
     return UNITY_END();
 }

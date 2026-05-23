@@ -1,5 +1,5 @@
 /**
- * @file mr.h
+ * @file core.h
  * @brief Internal header for MapReduce execution management.
  *
  * This header defines the internal structure and function prototypes for
@@ -10,10 +10,10 @@
  * @author Adnaan Juma
  */
 
-#ifndef MR_H
-#define MR_H
+#ifndef CORE_H
+#define CORE_H
 
-#include <libmr.h>
+#include <mr.h>
 
 /**
  * @brief Internal structure representing a MapReduce execution instance.
@@ -55,4 +55,5 @@ int mr_init(mr_t mr, const mr_attr_t* attr, mr_mapper_t mapper,
  * @pre mr is not NULL and has been initialized.
  */
 void mr_cleanup(mr_t mr);
-#endif // MR_H
+
+#endif // CORE_H

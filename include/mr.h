@@ -1,11 +1,11 @@
 /**
- * @file libmr.h
+ * @file mr.h
  * @author Adnaan Juma
  * @brief Public interface for the MapReduce framework libmr.
  */
 
-#ifndef LIBMR_H
-#define LIBMR_H
+#ifndef MR_H
+#define MR_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -246,4 +246,4 @@ int mr_start(mr_t mr, const char* input_path, const char* output_path);
  */
 int mr_destroy(mr_t mr);
 
-#endif /* LIBMR_H */
+#endif /* MR_H */

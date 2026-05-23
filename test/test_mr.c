@@ -1,7 +1,7 @@
-#include "test_libmr.h"
+#include "test_mr.h"
 #include <unity.h>
 
-#include <libmr.h>
+#include <mr.h>
 #include <config.h>
 
 void test_mr_attr_init(void) {
@@ -70,7 +70,7 @@ void test_mr_attr_destroy(void) {
     TEST_ASSERT_EQUAL_INT(-1, mr_attr_destroy(NULL));
 }
 
-void test_libmr(void) {
+void test_mr(void) {
     RUN_TEST(test_mr_attr_init);
     RUN_TEST(test_mr_attr_set_mapper_threads);
     RUN_TEST(test_mr_attr_set_reducer_threads);
