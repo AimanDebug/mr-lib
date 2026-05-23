@@ -10,8 +10,8 @@ BINARY = libmr.a
 include_dirs = include
 warning_flags = -Wall -Wextra -Wpedantic -Werror
 
-debug_flags = -g -Og -ggdb
-release_flags = -O3
+debug_flags = -g -Og -ggdb -DMR_DEBUG
+release_flags = -O3 -DNDEBUG
 
 src_dir = src
 bin_dir = bin
