@@ -56,4 +56,29 @@ int mr_init(mr_t mr, const mr_attr_t* attr, mr_mapper_t mapper,
  */
 void mr_cleanup(mr_t mr);
 
+/**
+ * @brief Checks if the number of mapper threads is valid.
+ */
+bool mr_attr_check_mapper_threads(size_t n);
+
+/**
+ * @brief Checks if the number of reducer threads is valid.
+ */
+bool mr_attr_check_reducer_threads(size_t n);
+
+/**
+ * @brief Checks if the queue size is valid.
+ */
+bool mr_attr_check_queue_size(size_t n);
+
+/**
+ * @brief Checks if the log file path is valid.
+ */
+bool mr_attr_check_log_file(const char* path);
+
+/**
+ * @brief Validates all attributes in the mr_attr_t structure.
+ */
+bool mr_attr_check(const mr_attr_t* attr);
+
 #endif // CORE_H

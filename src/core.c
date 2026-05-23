@@ -39,3 +39,21 @@ void mr_cleanup(mr_t mr) {
   // Free any resources allocated in mr_init
   free((void*)mr->attr.log_file);
 }
+
+bool mr_attr_check_mapper_threads(size_t n) { return n >= 1; }
+bool mr_attr_check_reducer_threads(size_t n) { return n >= 1; }
+bool mr_attr_check_queue_size(size_t n) { return n >= 1; }
+bool mr_attr_check_log_file(const char* path) {
+  // NOTE: path validity is not checked here,
+  // as it may be created later by the framework.
+  (void)path;
+  return true;
+}
+bool mr_attr_check(const mr_attr_t* attr) {
+  assert(attr != NULL);
+
+  return mr_attr_check_mapper_threads(attr->mapper_threads) &&
+         mr_attr_check_reducer_threads(attr->reducer_threads) &&
+         mr_attr_check_queue_size(attr->queue_size) &&
+         mr_attr_check_log_file(attr->log_file);
+}
