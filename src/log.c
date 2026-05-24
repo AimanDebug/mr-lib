@@ -46,8 +46,13 @@ int mr_log(mr_log_file_t* log, const char* level, const char* pname,
   int result;
 
 #if MR_LOG_ENABLE_TIMESTAMP
-  result = fprintf(log->file, "%s %s[%d] %s %s: ", asctime(localtime(&now)),
-                   pname, getpid(), tname, level);
+  char time_buf[64];
+  if (!strftime(time_buf, sizeof(time_buf), "%c", localtime(&now)))
+    time_buf[sizeof(time_buf) - 1] =
+        '\0'; // Fallback to truncated time if formatting fails
+
+  result = fprintf(log->file, "%s %s[%d] %s %s: ", time_buf, pname, getpid(),
+                   tname, level);
 #else
   result = fprintf(log->file, "%s[%d] %s %s: ", pname, getpid(), tname, level);
 #endif
