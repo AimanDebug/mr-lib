@@ -75,6 +75,12 @@ int mr_log(mr_log_file_t* log, const char* level, const char* pname,
     return -1;
   }
 
+  if (fputc('\n', log->file) == EOF) {
+    // errno is set by fputc
+    sem_post(log->sem);
+    return -1;
+  }
+
   if (fflush(log->file) < 0) { // Ensure logs are written to disk
     // errno is set by fflush
     sem_post(log->sem);
