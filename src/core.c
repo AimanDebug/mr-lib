@@ -45,18 +45,20 @@ int mr_run(mr_t mr, const char* input_path, const char* output_path) {
   assert(input_path != NULL);
   assert(output_path != NULL);
 
-  SYSCALL_CHECK(mr_log_init(mr->attr.log_file), return -1);
+  mr_log_file_t log_file;
+
+  SYSCALL_CHECK(mr_log_init(&log_file, mr->attr.log_file), return -1);
 
   SYSCALL_CHECK(
-      mr_log_info("Main", "",
+      mr_log_info(&log_file, "Main", "",
                   "Starting MapReduce job with input: %s and output: %s",
                   input_path, output_path),
       {
-        mr_log_destroy();
+        mr_log_destroy(&log_file);
         return -1;
       });
 
-  SYSCALL_CHECK(mr_log_destroy(), return -1);
+  SYSCALL_CHECK(mr_log_destroy(&log_file), return -1);
 
   return 0;
 }
