@@ -5,9 +5,11 @@ CC = gcc
 AR = ar
 ARFLAGS = rcs
 CFLAGS = $(warning_flags) $(addprefix -I, $(include_dirs)) -std=c11
+TEST_CFLAGS = $(addprefix -I, $(test_include_dirs)) -DMR_LOG_ENABLE_TIMESTAMP=0
 BINARY = libmr.a
 
-include_dirs = include
+include_dirs = include src
+test_include_dirs = $(unity_dir)/src
 warning_flags = -Wall -Wextra -Wpedantic -Werror
 
 debug_flags = -g -Og -ggdb -DMR_DEBUG
@@ -37,12 +39,12 @@ test: test-debug test-release
 test-debug:
 	@echo "Testing in debug mode..."
 	@$(MAKE) run-tests bin_dir=$(bin_dir)/debug \
-		CFLAGS="$(CFLAGS) $(debug_flags)"
+		CFLAGS="$(CFLAGS) $(debug_flags) $(TEST_CFLAGS)"
 
 test-release:
 	@echo "Testing in release mode..."
 	@$(MAKE) run-tests bin_dir=$(bin_dir)/release \
-		CFLAGS="$(CFLAGS) $(release_flags)"
+		CFLAGS="$(CFLAGS) $(release_flags) $(TEST_CFLAGS)"
 
 clean:
 	rm -rf $(bin_dir)/*
@@ -62,10 +64,6 @@ $(src_int_dir)/%.o: $(src_dir)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # --------------- Test Runner ---------------------
-test_include_dirs = $(unity_dir)/src
-
-TEST_CFLAGS = $(addprefix -I, $(test_include_dirs))
-
 test_dir = test
 test_int_dir = $(int_dir)/test
 unity_dir = $(lib_dir)/vendor/Unity
@@ -77,13 +75,13 @@ run-tests: prepare $(bin_dir)/test_runner
 	@./$(bin_dir)/test_runner
 
 $(bin_dir)/test_runner: $(test_objects) $(test_int_dir)/unity.o $(bin_dir)/$(BINARY)
-	@$(CC) $(CFLAGS) $(TEST_CFLAGS) $^ -o $@
+	@$(CC) $(CFLAGS) $^ -o $@
 
 $(test_int_dir)/unity.o: $(unity_dir)/src/unity.c
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 $(test_int_dir)/%.o: $(test_dir)/%.c
-	@$(CC) $(CFLAGS) $(TEST_CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 # -------------- Utility Targets ------------------
 prepare:
