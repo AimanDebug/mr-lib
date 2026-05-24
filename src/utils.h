@@ -1,5 +1,5 @@
-#ifndef SYSCALL_H
-#define SYSCALL_H
+#ifndef UTILS_H
+#define UTILS_H
 
 #define SYSCALL_CHECK(expression, command)                                     \
   do {                                                                         \
@@ -15,4 +15,7 @@
     }                                                                          \
   } while (0)
 
-#endif // SYSCALL_H
+// For now it's just an alias
+#define MRCALL_CHECK(expression, command) SYSCALL_CHECK(expression, command)
+
+#endif // UTILS_H

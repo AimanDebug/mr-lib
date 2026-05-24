@@ -7,7 +7,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "syscall.h"
+#include "utils.h"
 
 int mr_log_init(mr_log_file_t* log, const char* log_file_path) {
   assert(log != NULL);

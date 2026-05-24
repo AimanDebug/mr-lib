@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "log.h"
-#include "syscall.h"
+#include "utils.h"
 #include <mr.h>
 
 int mr_init(mr_t mr, const mr_attr_t* attr, mr_mapper_t mapper,
