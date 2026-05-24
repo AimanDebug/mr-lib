@@ -1,0 +1,99 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{Relazione Progetto MapReduce - libmr}
+\author{Framework per analisi di file di testo}
+\date{Maggio 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduzione}
+Il progetto consiste nella realizzazione di un framework denominato \texttt{libmr}, scritto in linguaggio C, che implementa il paradigma MapReduce per l'analisi di file testuali su un singolo calcolatore. Il framework gestisce la creazione di processi, la comunicazione tramite pipe e la sincronizzazione di thread, permettendo all'utente di concentrarsi esclusivamente sulla logica di \textit{mapping} e \textit{reducing}.
+
+Allo stato attuale dello sviluppo, il framework implementa l'interfaccia pubblica, comprensiva della gestione della configurazione, e il sistema di logging sincronizzato. Le componenti relative alla pipeline di processi e all'esecuzione multithread sono in fase di progettazione e implementazione.
+
+\section{Architettura Generale}
+L'architettura prevista per il framework si basa su una pipeline di tre processi:
+\begin{itemize}
+    \item \textbf{Processo Principale}: Si occupa della lettura dei file di input e dell'invio delle righe al mapper. Raccoglie inoltre i risultati finali dal reducer.
+    \item \textbf{Processo Mapper}: Riceve le righe, le elabora tramite thread C11 e invia coppie \texttt{<token, valore>} al reducer.
+    \item \textbf{Processo Reducer}: Raggruppa i valori per token, esegue la riduzione multithread e produce l'output finale.
+\end{itemize}
+
+Attualmente, il framework fornisce le strutture dati di base (\texttt{mr\_t}) e le funzioni per la loro gestione, preparando il terreno per l'attivazione della pipeline di processi.
+
+\section{Interfaccia Pubblica}
+L'interfaccia del framework è organizzata per separare la definizione delle API pubbliche dalla configurazione dei parametri interni.
+
+\subsection{mr.h}
+L'header principale \texttt{include/mr.h} implementa fedelmente l'interfaccia pubblica richiesta nel testo della specifica del progetto, garantendo la compatibilità con i programmi di test esterni e fornendo tutti i tipi, le strutture e i prototipi di funzione necessari all'utilizzo della libreria.
+
+\subsection{config.h}
+L'header \texttt{include/config.h} definisce le costanti e i valori di default utilizzati dal framework. Grazie all'uso di direttive \texttt{\#ifndef}, questi valori possono essere sovrascritti con flag di compilazione (es. \texttt{-DMR\_LOG\_LEVEL=MR\_LOG\_LEVEL\_WARNING}).
+
+Di seguito la descrizione delle principali macro:
+\begin{itemize}
+    \item \texttt{MR\_DEFAULT\_MAPPER\_THREADS}: Numero predefinito di thread worker avviati nel processo mapper (valore: 4).
+    \item \texttt{MR\_DEFAULT\_REDUCER\_THREADS}: Numero predefinito di thread worker avviati nel processo reducer (valore: 4).
+    \item \texttt{MR\_DEFAULT\_QUEUE\_SIZE}: Capacità massima predefinita per le code produttore-consumatore interne (valore: 100).
+    \item \texttt{MR\_DEFAULT\_LOG\_FILE}: Nome predefinito del file su cui vengono scritti i log (\texttt{"mr.log"}).
+    \item \texttt{MR\_LOG\_SEM\_NAME}: Nome del semaforo POSIX utilizzato per sincronizzare l'accesso al file di log (valore: \texttt{"/mr\_log\_sem"}).
+    \item \texttt{MR\_LOG\_LEVEL}: Definisce la verbosità del sistema di logging. Di default è impostato su \texttt{MR\_LOG\_LEVEL\_INFO} (valore: 1), o \texttt{MR\_LOG\_LEVEL\_DEBUG} (valore: 0) se compilato in modalità debug.
+\end{itemize}
+
+\section{Sistema di Logging}
+Il sistema di logging è una componente fondamentale già completamente operativa. Le sue caratteristiche principali includono:
+\begin{itemize}
+    \item \textbf{Sincronizzazione}: Utilizzo di semafori POSIX (\texttt{sem\_t}) per garantire l'atomicità delle scritture da processi e thread diversi.
+    \item \textbf{Formato}: Ogni riga di log segue rigorosamente il formato:
+    \begin{center}
+        \texttt{<timestamp> <pname>[<pid>] <tname> <level>: <message>}
+    \end{center}
+    \item \textbf{Persistenza}: I log vengono scritti in modalità \textit{append} sul file configurato.
+\end{itemize}
+
+\section{Descrizione dei Test Realizzati}
+Sono stati implementati test unitari utilizzando il framework \texttt{Unity} per verificare la robustezza dell'interfaccia pubblica e della gestione degli attributi. I test coprono:
+\begin{itemize}
+    \item Corretta inizializzazione con i valori predefiniti nel sistema.
+    \item Rifiuto di parametri non validi e impostazione corretta di \texttt{errno}.
+    \item Gestione sicura della memoria nelle operazioni di creazione e distruzione.
+\end{itemize}
+
+\section{Conclusioni}
+Allo stato attuale, \texttt{libmr} fornisce una solida base infrastrutturale e un'interfaccia utente coerente. Le prossime fasi di sviluppo si concentreranno sull'attivazione della pipeline di processi tramite \texttt{fork()} e \texttt{pipe()} e sull'orchestrazione dei thread worker all'interno di mapper e reducer.
+
+\end{document}

@@ -18,7 +18,7 @@ bin_dir = bin
 lib_dir = lib
 int_dir = $(bin_dir)/intermediates
 
-.PHONY: all debug release build prepare clean test test-debug test-release run-tests
+.PHONY: all debug release build prepare clean test test-debug test-release run-tests docs
 
 all: debug release
 
@@ -88,3 +88,14 @@ $(test_int_dir)/%.o: $(test_dir)/%.c
 # -------------- Utility Targets ------------------
 prepare:
 	@mkdir -p $(bin_dir) $(src_int_dir) $(test_int_dir)
+
+# -------------- Documentation --------------------
+DOC_DIR = docs
+DOC_NAME = Relazione
+
+docs: $(DOC_DIR)/$(DOC_NAME).tex
+	@echo "Compiling documentation..."
+	@cd $(DOC_DIR) && pdflatex -interaction=nonstopmode $(DOC_NAME).tex > /dev/null
+	@cd $(DOC_DIR) && pdflatex -interaction=nonstopmode $(DOC_NAME).tex > /dev/null
+	@rm -f $(DOC_DIR)/$(DOC_NAME).aux $(DOC_DIR)/$(DOC_NAME).log $(DOC_DIR)/$(DOC_NAME).out
+	@echo "Documentation compiled: $(DOC_DIR)/$(DOC_NAME).pdf"
