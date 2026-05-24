@@ -47,18 +47,15 @@ int mr_run(mr_t mr, const char* input_path, const char* output_path) {
 
   mr_log_file_t log_file;
 
-  SYSCALL_CHECK(mr_log_init(&log_file, mr->attr.log_file), return -1);
+  MRCALL_CHECK(mr_log_init(&log_file, mr->attr.log_file));
 
-  SYSCALL_CHECK(
+  MRCALL_CHECK_CMD(
       mr_log_info(&log_file, "Main", "",
                   "Starting MapReduce job with input: %s and output: %s",
                   input_path, output_path),
-      {
-        mr_log_destroy(&log_file);
-        return -1;
-      });
+      mr_log_destroy(&log_file));
 
-  SYSCALL_CHECK(mr_log_destroy(&log_file), return -1);
+  MRCALL_CHECK(mr_log_destroy(&log_file));
 
   return 0;
 }

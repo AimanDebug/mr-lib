@@ -19,7 +19,7 @@ int mr_log_init(mr_log_file_t* log, const char* log_file_path) {
   }
 
   if ((log->sem = sem_open(MR_LOG_SEM_NAME, O_CREAT | O_EXCL | O_RDWR, 0600,
-                            1)) == SEM_FAILED) {
+                           1)) == SEM_FAILED) {
     // errno is set by sem_open
     fclose(log->file);
     log->file = NULL;
@@ -36,15 +36,12 @@ int mr_log(mr_log_file_t* log, const char* level, const char* pname,
   assert(log->sem != NULL);
   assert(format != NULL);
 
-  SYSCALL_CHECK(sem_wait(log->sem), return -1);
+  SYSCALL_CHECK(sem_wait(log->sem));
 
   time_t now = time(NULL);
 
-  if (now == (time_t)-1) {
-    // errno is set by time
-    sem_post(log->sem);
-    return -1;
-  }
+  // time returns -1 on error we can use SYSCALL_CHECK_CMD
+  SYSCALL_CHECK_CMD(now, sem_post(log->sem));
 
   if (fprintf(log->file, "%s %s[%d] %s %s: ", asctime(localtime(&now)), pname,
               getpid(), tname, level) < 0) {
@@ -70,7 +67,7 @@ int mr_log(mr_log_file_t* log, const char* level, const char* pname,
     sem_post(log->sem);
   }
 
-  SYSCALL_CHECK(sem_post(log->sem), return -1);
+  SYSCALL_CHECK(sem_post(log->sem));
 
   return 0;
 }
@@ -89,17 +86,15 @@ int mr_log_destroy(mr_log_file_t* log) {
     return -1;
   }
 
-  SYSCALL_CHECK(sem_close(log->sem), {
+  SYSCALL_CHECK_CMD(sem_close(log->sem), {
     sem_unlink(MR_LOG_SEM_NAME);
     log->file = NULL;
     log->sem = SEM_FAILED;
-    return -1;
   });
 
-  SYSCALL_CHECK(sem_unlink(MR_LOG_SEM_NAME), {
+  SYSCALL_CHECK_CMD(sem_unlink(MR_LOG_SEM_NAME), {
     log->file = NULL;
     log->sem = SEM_FAILED;
-    return -1;
   });
 
   log->file = NULL;

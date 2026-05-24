@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include "core.h"
+#include "utils.h"
 
 int mr_attr_init(mr_attr_t* attr) {
   if (attr == NULL) {
@@ -97,10 +98,8 @@ int mr_create(mr_t* mr, const mr_attr_t* attr, mr_mapper_t mapper,
     return -1;
   }
 
-  if (mr_init(*mr, attr, mapper, reducer, user_arg) == -1) {
-    free(*mr); // free preserves errno
-    return -1;
-  }
+  MRCALL_CHECK_CMD(mr_init(*mr, attr, mapper, reducer, user_arg),
+                   free(*mr)); // free preserves errno
 
   return 0;
 }
@@ -111,10 +110,7 @@ int mr_start(mr_t mr, const char* input_path, const char* output_path) {
     return -1;
   }
 
-  if (mr_run(mr, input_path, output_path) == -1) {
-    // errno is set by mr_run
-    return -1;
-  }
+  MRCALL_CHECK(mr_run(mr, input_path, output_path));
 
   return 0;
 }
