@@ -36,7 +36,11 @@ static_assert(sizeof(MR_DEFAULT_LOG_FILE) > (size_t)1,
 #ifndef MR_LOG_SEM_NAME
 #define MR_LOG_SEM_NAME                                                        \
   "/mr_log_sem" //< Name of the semaphore for logging
-                   // synchronization
+                // synchronization
+#endif
+
+#ifndef MR_LOG_ENABLE_TIMESTAMP
+#define MR_LOG_ENABLE_TIMESTAMP 1
 #endif
 
 #define MR_LOG_LEVEL_DEBUG 0

@@ -43,8 +43,16 @@ int mr_log(mr_log_file_t* log, const char* level, const char* pname,
   // time returns -1 on error we can use SYSCALL_CHECK_CMD
   SYSCALL_CHECK_CMD(now, sem_post(log->sem));
 
-  if (fprintf(log->file, "%s %s[%d] %s %s: ", asctime(localtime(&now)), pname,
-              getpid(), tname, level) < 0) {
+  int result;
+
+#if MR_LOG_ENABLE_TIMESTAMP
+  result = fprintf(log->file, "%s %s[%d] %s %s: ", asctime(localtime(&now)),
+                   pname, getpid(), tname, level);
+#else
+  result = fprintf(log->file, "%s[%d] %s %s: ", pname, getpid(), tname, level);
+#endif
+
+  if (result < 0) {
     // errno is set by fprintf;
     sem_post(log->sem);
     return -1;
@@ -53,7 +61,7 @@ int mr_log(mr_log_file_t* log, const char* level, const char* pname,
   // format the message
   va_list args;
   va_start(args, format);
-  int result = vfprintf(log->file, format, args);
+  result = vfprintf(log->file, format, args);
   va_end(args);
 
   if (result < 0) {
