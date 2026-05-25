@@ -4,6 +4,16 @@
 #include "log.h"
 
 /**
+ * @brief Header structure for communication from the main process to the mapper
+ * process.
+ */
+typedef struct main_to_mapper_header {
+  size_t file_name_length; //< Length of the file name string excluding \0
+  size_t
+      line_length; //< Length of the line string excluding \n and \0 terminators
+} main_to_mapper_header_t;
+
+/**
  * @brief Send input data from the main process to the mapper process through a
  * pipe.
  * @param log_file Pointer to the log file for logging errors and information.
