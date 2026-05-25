@@ -2,16 +2,17 @@
 #define PROTOCOL_H
 
 #include "log.h"
+#include <stdbool.h>
 
-/**
- * @brief Header structure for communication from the main process to the mapper
- * process.
- */
-typedef struct main_to_mapper_header {
-  size_t file_name_length; //< Length of the file name string excluding \0
+typedef struct {
+  size_t file_name_length; // Length of the file name string excluding \0
+} file_name_header_t;
+
+typedef struct {
+  bool eof; //< Indicates if the previous line was the last line of the file
   size_t
-      line_length; //< Length of the line string excluding \n and \0 terminators
-} main_to_mapper_header_t;
+      line_length; // Length of the line string excluding \n and \0 terminators
+} line_header_t;
 
 /**
  * @brief Send input data from the main process to the mapper process through a
