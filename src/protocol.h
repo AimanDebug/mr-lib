@@ -19,7 +19,8 @@
 int send_input_to_mapper(mr_log_file_t* log_file, int write_fd,
                          const char* input_path);
 
-/** @brief Receive output data from the reducer process through a pipe and write
+/**
+ * @brief Receive output data from the reducer process through a pipe and write
  * it to an output file.
  * @param log_file Pointer to the log file for logging errors and information.
  * @param read_fd File descriptor for the read end of the pipe from the reducer
@@ -33,5 +34,29 @@ int send_input_to_mapper(mr_log_file_t* log_file, int write_fd,
  */
 int receive_output_from_reducer(mr_log_file_t* log_file, int read_fd,
                                 const char* output_path);
+
+/**
+ * @brief Read exactly n bytes from a file descriptor into a buffer.
+ * @param fd File descriptor to read from.
+ * @param buffer Pointer to the buffer where the read data will be stored.
+ * @param n Number of bytes to read.
+ * @return Number of bytes read on success, -1 on failure.
+ *
+ * @pre - fd is a valid file descriptor
+ * - buffer is not NULL
+ */
+ssize_t read_n(int fd, void* buffer, size_t n);
+
+/**
+ * @brief Write exactly n bytes from a buffer to a file descriptor.
+ * @param fd File descriptor to write to.
+ * @param buffer Pointer to the buffer that contains the data to be written.
+ * @param n Number of bytes to write.
+ * @return Number of bytes written on success, -1 on failure.
+ *
+ * @pre - fd is a valid file descriptor
+ * - buffer is not NULL
+ */
+ssize_t write_n(int fd, const void* buffer, size_t n);
 
 #endif /* PROTOCOL_H */
