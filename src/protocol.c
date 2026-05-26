@@ -553,6 +553,7 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
       });
 
       free(receiver->current_file_name);
+      receiver->current_file_name = NULL;
 
       if (bytes_read == 0) {
         return 1; // Pipe EOF
