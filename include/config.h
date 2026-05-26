@@ -33,6 +33,11 @@ static_assert((size_t)MR_DEFAULT_QUEUE_SIZE > (size_t)0,
 static_assert(sizeof(MR_DEFAULT_LOG_FILE) > (size_t)1,
               "Default log filename must be non-empty");
 
+#ifndef MR_REDUCER_HASH_TABLE_SIZE
+#define MR_REDUCER_HASH_TABLE_SIZE                                             \
+  1024 //< Size of the hash table for grouping tokens in the reducer
+#endif
+
 #ifndef MR_LOG_SEM_NAME
 #define MR_LOG_SEM_NAME                                                        \
   "/mr_log_sem" //< Name of the semaphore for logging

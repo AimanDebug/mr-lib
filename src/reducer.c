@@ -7,8 +7,7 @@
 #include "protocol.h"
 #include "queue.h"
 #include "utils.h"
-
-#define HASH_TABLE_SIZE 1024
+#include <config.h>
 
 /**
  * @brief Node for grouping values by token.
@@ -118,7 +117,7 @@ static unsigned long hash_function(const char* str) {
   int c;
   while ((c = *str++))
     hash = ((hash << 5) + hash) + c;
-  return hash % HASH_TABLE_SIZE;
+  return hash % MR_REDUCER_HASH_TABLE_SIZE;
 }
 
 /**
@@ -194,7 +193,7 @@ static void cleanup_token_node(token_node_t* node) {
  * @brief Frees all resources in the hash table.
  */
 static void cleanup_hash_table(token_node_t** hash_table) {
-  for (int i = 0; i < HASH_TABLE_SIZE; i++) {
+  for (int i = 0; i < MR_REDUCER_HASH_TABLE_SIZE; i++) {
     token_node_t* node = hash_table[i];
     while (node) {
       token_node_t* next = node->next;
@@ -214,7 +213,7 @@ int reducer_process_main(mr_log_file_t* log_file, size_t reducer_threads,
                            reducer_threads, queue_size),
                 {});
 
-  token_node_t* hash_table[HASH_TABLE_SIZE] = {0};
+  token_node_t* hash_table[MR_REDUCER_HASH_TABLE_SIZE] = {0};
 
   char* token;
   void* value;
@@ -314,12 +313,12 @@ int reducer_process_main(mr_log_file_t* log_file, size_t reducer_threads,
   }
 
   // Push tokens from hash table into the queue
-  for (int i = 0; i < HASH_TABLE_SIZE; i++) {
+  for (int i = 0; i < MR_REDUCER_HASH_TABLE_SIZE; i++) {
     token_node_t* node = hash_table[i];
     while (node) {
       tokens_count++;
       token_node_t* next = node->next;
-      if (mr_queue_push(&queue, &node) != 0) {
+      SYSCALL_EXIT_CHECK(mr_queue_push(&queue, &node), {
         mr_log_error(log_file, "Reducer", "Controller",
                      "Failed to push token to queue");
         // In case of error, we still need to cleanup the rest of the hash table
@@ -335,7 +334,7 @@ int reducer_process_main(mr_log_file_t* log_file, size_t reducer_threads,
           cleanup_token_node(node);
           node = next;
         }
-        for (int k = i + 1; k < HASH_TABLE_SIZE; k++) {
+        for (int k = i + 1; k < MR_REDUCER_HASH_TABLE_SIZE; k++) {
           node = hash_table[k];
           while (node) {
             next = node->next;
@@ -348,7 +347,7 @@ int reducer_process_main(mr_log_file_t* log_file, size_t reducer_threads,
         mtx_destroy(&stdout_mutex);
         mr_queue_destroy(&queue);
         return EXIT_FAILURE;
-      }
+      });
       node = next;
     }
   }
