@@ -552,11 +552,12 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
         return -1;
       });
 
+      free(receiver->current_file_name);
+
       if (bytes_read == 0) {
         return 1; // Pipe EOF
       }
 
-      free(receiver->current_file_name);
       receiver->current_file_name = malloc(fn_header.file_name_length + 1);
       if (receiver->current_file_name == NULL) {
         mr_log_error(log_file, "Mapper", "Controller",
@@ -595,8 +596,16 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
       continue; // Move to next file or pipe EOF
     }
 
-    // Success, we have a line
-    out_line->file_name = receiver->current_file_name;
+    // make a copy of the file name for the line struct, because receiver might change it when the next file starts
+    char* file_name_copy = malloc(receiver->current_file_name_len + 1);
+    if (file_name_copy == NULL) {
+      mr_log_error(log_file, "Mapper", "Controller",
+                    "Failed to allocate memory for line file name");
+      return -1;
+    }
+    memcpy(file_name_copy, receiver->current_file_name, receiver->current_file_name_len + 1);
+
+    out_line->file_name = file_name_copy;
     out_line->file_name_len = receiver->current_file_name_len;
     out_line->line_number = receiver->current_line_number++;
     out_line->line_len = l_header.line_length;

@@ -56,10 +56,12 @@ void mr_main_receiver_destroy(mr_main_receiver_t* receiver);
  * @pre - log_file not NULL
  * - receiver not NULL
  * - out_line not NULL
+ * @note The caller is responsible for freeing the memory allocated for
+ * out_line->line and out_line->file_name by this function.
  */
 int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
-                           mr_main_receiver_t* receiver,
-                           mr_file_line_t* out_line);
+                              mr_main_receiver_t* receiver,
+                              mr_file_line_t* out_line);
 
 /**
  * @brief Send input data from the main process to the mapper process through a
@@ -106,8 +108,8 @@ int receive_output_from_reducer(mr_log_file_t* log_file, int read_fd,
  * - token not NULL
  */
 int send_result_to_main_fd(mr_log_file_t* log_file, int write_fd,
-                        const char* token, const void* result,
-                        size_t result_size);
+                           const char* token, const void* result,
+                           size_t result_size);
 
 /**
  * @brief Send a <token, value> pair from the mapper process to the reducer
@@ -123,8 +125,8 @@ int send_result_to_main_fd(mr_log_file_t* log_file, int write_fd,
  * - token not NULL
  */
 int send_pair_to_reducer_fd(mr_log_file_t* log_file, int write_fd,
-                         const char* token, const void* value,
-                         size_t value_size);
+                            const char* token, const void* value,
+                            size_t value_size);
 
 /**
  * @brief Receive a <token, value> pair from the mapper process.
@@ -143,8 +145,8 @@ int send_pair_to_reducer_fd(mr_log_file_t* log_file, int write_fd,
  * - out_value_size not NULL
  */
 int receive_pair_from_mapper_fd(mr_log_file_t* log_file, int read_fd,
-                             char** out_token, void** out_value,
-                             size_t* out_value_size);
+                                char** out_token, void** out_value,
+                                size_t* out_value_size);
 
 /**
  * @brief Read exactly n bytes from a file descriptor into a buffer.
@@ -181,8 +183,13 @@ ssize_t write_n(int fd, const void* buffer, size_t n);
  * @pre - log_file not NULL
  * - receiver not NULL
  * - out_line not NULL
+ * @note This is a wrapper around receive_line_from_main_fd that uses
+ * STDIN_FILENO as the file descriptor. The caller is responsible for freeing
+ * the memory allocated for out_line->line and out_line->file_name by this
+ * function.
  */
-int receive_line_from_main(mr_log_file_t* log_file, mr_main_receiver_t* receiver,
+int receive_line_from_main(mr_log_file_t* log_file,
+                           mr_main_receiver_t* receiver,
                            mr_file_line_t* out_line);
 
 /**
@@ -196,6 +203,8 @@ int receive_line_from_main(mr_log_file_t* log_file, mr_main_receiver_t* receiver
  *
  * @pre - log_file not NULL
  * - token not NULL
+ * @note This function is a wrapper around send_pair_to_reducer_fd that uses
+ * STDOUT_FILENO as the file descriptor.
  */
 int send_pair_to_reducer(mr_log_file_t* log_file, const char* token,
                          const void* value, size_t value_size);
