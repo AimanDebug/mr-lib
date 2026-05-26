@@ -2,6 +2,7 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -188,12 +189,22 @@ static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
                     });
 
   for (int i = 0; i < files; i++) {
+    if (strcmp(namelist[i]->d_name, ".") == 0 ||
+        strcmp(namelist[i]->d_name, "..") == 0) {
+      free(namelist[i]);
+      continue;
+    }
+
+    char full_path[PATH_MAX];
+    snprintf(full_path, sizeof(full_path), "%s/%s", dir_path,
+             namelist[i]->d_name);
+
     int is_dir;
 
-    SYSCALL_RET(is_dir, is_directory(log_file, namelist[i]->d_name), {
+    SYSCALL_RET(is_dir, is_directory(log_file, full_path), {
       mr_log_error(log_file, "Main", "Main",
                    "Failed to determine if entry '%s' is a directory",
-                   namelist[i]->d_name);
+                   full_path);
 
       for (int j = i; j < files; j++) {
         free(namelist[j]);
@@ -205,24 +216,23 @@ static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
     if (is_dir == 1) {
       mr_log_warning(log_file, "Main", "Main",
                      "Skipping directory '%s' in input directory '%s'",
-                     namelist[i]->d_name, dir_path);
+                     full_path, dir_path);
 
       free(namelist[i]);
       continue;
     }
 
-    SYSCALL_RET_CHECK(
-        send_file_to_mapper(log_file, write_fd, namelist[i]->d_name), {
-          mr_log_error(log_file, "Main", "Main",
-                       "Failed to send file '%s' in directory '%s' to mapper",
-                       namelist[i]->d_name, dir_path);
+    SYSCALL_RET_CHECK(send_file_to_mapper(log_file, write_fd, full_path), {
+      mr_log_error(log_file, "Main", "Main",
+                   "Failed to send file '%s' in directory '%s' to mapper",
+                   full_path, dir_path);
 
-          for (int j = i; j < files; j++) {
-            free(namelist[j]);
-          }
+      for (int j = i; j < files; j++) {
+        free(namelist[j]);
+      }
 
-          free(namelist);
-        });
+      free(namelist);
+    });
 
     free(namelist[i]);
   }
