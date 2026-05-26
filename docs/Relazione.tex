@@ -78,18 +78,44 @@ Le callback utente seguono le firme \texttt{mr\_mapper\_t} e \texttt{mr\_reducer
 \section{Architettura e Gestione Processi}
 L'architettura di \texttt{libmr} si basa su una pipeline di tre processi distinti che comunicano in modo unidirezionale tramite pipe POSIX. La creazione dei processi avviene tramite \texttt{fork()} nel processo principale.
 
-\subsection{Pipeline di Comunicazione}
-Sono utilizzate tre pipe principali:
+\subsection{Creazione dei Processi e Fork}
+Il processo principale (\textit{Main}) è responsabile del setup iniziale e del coordinamento. Il framework segue un modello di esecuzione basato su processi separati per garantire l'isolamento delle risorse e sfruttare il parallelismo a livello di sistema operativo.
+
+La creazione della pipeline avviene in tre fasi principali:
+\begin{enumerate}
+    \item \textbf{Setup delle Pipe}: Vengono create tre pipe anonime tramite la system call \texttt{pipe()}: \texttt{main\_to\_mapper}, \texttt{mapper\_to\_reducer} e \texttt{reducer\_to\_main}.
+    \item \textbf{Fork del Mapper}: Viene invocata la \texttt{fork()} per creare il processo Mapper. Il processo figlio:
+    \begin{itemize}
+        \item Utilizza \texttt{dup2()} per collegare l'estremità di lettura di \texttt{main\_to\_mapper} allo standard input (\texttt{STDIN\_FILENO}).
+        \item Utilizza \texttt{dup2()} per collegare l'estremità di scrittura di \texttt{mapper\_to\_reducer} allo standard output (\texttt{STDOUT\_FILENO}).
+        \item Chiude tutti i descrittori di file delle pipe non necessari per evitare che i riferimenti rimasti aperti impediscano la corretta chiusura delle pipe stesse.
+        \item Esegue la funzione \texttt{mapper\_process\_main}.
+    \end{itemize}
+    \item \textbf{Fork del Reducer}: Una seconda \texttt{fork()} crea il processo Reducer. Il processo figlio:
+    \begin{itemize}
+        \item Collega la lettura di \texttt{mapper\_to\_reducer} a \texttt{STDIN\_FILENO}.
+        \item Collega la scrittura di \texttt{reducer\_to\_main} a \texttt{STDOUT\_FILENO}.
+        \item Chiude i descrittori superflui.
+        \item Esegue la funzione \texttt{reducer\_process\_main}.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Gestione dei File Descriptor e Pipeline}
+Una gestione rigorosa dei descrittori di file è fondamentale per il funzionamento della pipeline. In ogni processo (Main, Mapper e Reducer), vengono chiuse sistematicamente tutte le estremità delle pipe che non vengono utilizzate direttamente. 
+
+Questo è essenziale per due motivi:
 \begin{itemize}
-    \item \texttt{main\_to\_mapper}: Trasferisce le righe dei file dal Main al Mapper.
-    \item \texttt{mapper\_to\_reducer}: Trasferisce le coppie \texttt{<token, valore>} dal Mapper al Reducer.
-    \item \texttt{reducer\_to\_main}: Trasferisce i risultati finali dal Reducer al Main.
+    \item \textbf{Propagazione dell'EOF}: Una pipe viene considerata chiusa in lettura solo quando tutti i descrittori di scrittura associati ad essa sono stati chiusi. Se un processo (ad esempio il Main) mantenesse aperta l'estremità di scrittura di una pipe che non usa, il processo destinatario resterebbe bloccato in una \texttt{read()} infinita, non ricevendo mai il segnale di fine file.
+    \item \textbf{Prevenzione di Deadlock}: Senza la chiusura tempestiva dei descrittori, i processi potrebbero attendere indefinitamente dati che non arriveranno mai o segnali di terminazione che non possono essere generati.
 \end{itemize}
 
-Il framework utilizza \texttt{dup2()} nei processi figli per collegare gli standard input e output alle pipe corrispondenti, assicurando che ogni stadio legga da \texttt{STDIN\_FILENO} e scriva su \texttt{STDOUT\_FILENO}. Una gestione rigorosa della chiusura dei descrittori non necessari in ciascun processo previene deadlock e garantisce la ricezione corretta dell'EOF lungo tutta la pipeline.
-
-\subsection{Coordinamento}
-Il processo principale attende la terminazione dei figli tramite \texttt{waitpid()}. La chiusura del lato di scrittura di una pipe da parte del mittente funge da segnale di terminazione per il destinatario, permettendo una propagazione naturale della fine dell'input.
+\subsection{Coordinamento e Terminazione}
+Il processo Main, dopo aver completato l'invio dei dati al Mapper, chiude la sua estremità di scrittura di \texttt{main\_to\_mapper}. Questa azione innesca una reazione a catena lungo la pipeline:
+\begin{enumerate}
+    \item Il Mapper legge l'EOF, termina l'elaborazione, chiude il suo \texttt{STDOUT} (collegato a \texttt{mapper\_to\_reducer}) ed esce.
+    \item Il Reducer riceve l'EOF dal Mapper, conclude l'aggregazione, scrive i risultati finali sul suo \texttt{STDOUT} (collegato a \texttt{reducer\_to\_main}) ed esce.
+    \item Il Main legge i risultati finali, chiude il suo \texttt{STDIN} (collegato a \texttt{reducer\_to\_main}) e utilizza \texttt{waitpid()} per raccogliere gli stati di terminazione dei figli, garantendo che non rimangano processi zombie nel sistema.
+\end{enumerate}
 
 \section{Organizzazione dei Thread}
 Sia il Mapper che il Reducer sono multithreaded e utilizzano lo standard C11 (\texttt{threads.h}).
