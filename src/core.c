@@ -24,16 +24,17 @@ int mr_init(mr_t mr, const mr_attr_t* attr, mr_mapper_t mapper,
   assert(mapper != NULL);
   assert(reducer != NULL);
 
+  // Set up attributes
   mr->attr.mapper_threads = attr->mapper_threads;
   mr->attr.reducer_threads = attr->reducer_threads;
   mr->attr.queue_size = attr->queue_size;
+  
   // Deep copy the log_file string
-  size_t length = strlen(attr->log_file) + 1; // +1 for the null terminator
-  if ((mr->attr.log_file = (char*)malloc(length)) == NULL) {
-    // errno is set by malloc
+  mr->attr.log_file = strdup(attr->log_file);
+  if (mr->attr.log_file == NULL) {
     return -1;
   }
-  memcpy((void*)mr->attr.log_file, (void*)attr->log_file, length);
+
   mr->mapper = mapper;
   mr->reducer = reducer;
   mr->user_arg = user_arg;
