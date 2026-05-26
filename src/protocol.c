@@ -51,17 +51,14 @@ ssize_t write_n(int fd, const void* buffer, size_t n) {
   return total_written;
 }
 
-static int is_directory(mr_log_file_t* log_file, const char* path,
-                        bool* out_result) {
+static int is_directory(mr_log_file_t* log_file, const char* path) {
   struct stat path_stat;
 
   SYSCALL_CHECK_CMD(stat(path, &path_stat), {
     mr_log_error(log_file, "Main", "Main", "Failed to stat path '%s'", path);
   });
 
-  *out_result = S_ISDIR(path_stat.st_mode);
-
-  return 0;
+  return S_ISDIR(path_stat.st_mode) ? 1 : 0;
 }
 
 static int send_file_to_mapper(mr_log_file_t* log_file, int write_fd,
@@ -186,12 +183,12 @@ static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
                    });
 
   for (int i = 0; i < files; i++) {
-    bool is_dir;
+    int is_dir;
 
-    MRCALL_CHECK_CMD(is_directory(log_file, namelist[i]->d_name, &is_dir), {
+    SYSCALL(is_dir, is_directory(log_file, namelist[i]->d_name), {
       mr_log_error(log_file, "Main", "Main",
                    "Failed to determine if entry '%s' is a directory",
-                   namelist[i]);
+                   namelist[i]->d_name);
 
       for (int j = i; j < files; j++) {
         free(namelist[j]);
@@ -200,7 +197,7 @@ static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
       free(namelist);
     });
 
-    if (is_dir) {
+    if (is_dir == 1) {
       mr_log_warning(log_file, "Main", "Main",
                      "Skipping directory '%s' in input directory '%s'",
                      namelist[i]->d_name, dir_path);
@@ -240,17 +237,17 @@ int send_input_to_mapper(mr_log_file_t* log_file, int write_fd,
   assert(write_fd >= 0);
   assert(input_path != NULL);
 
-  bool is_dir;
+  int is_dir;
 
-  MRCALL_CHECK(is_directory(log_file, input_path, &is_dir));
+  SYSCALL(is_dir, is_directory(log_file, input_path), {});
 
   MRCALL_CHECK(mr_log_info(log_file, "Main", "Main", "Input path '%s' is a %s",
                            input_path, is_dir ? "directory" : "file"));
 
   if (!is_dir)
-    MRCALL_CHECK(send_file_to_mapper(log_file, write_fd, input_path));
+    SYSCALL_CHECK(send_file_to_mapper(log_file, write_fd, input_path));
   else
-    MRCALL_CHECK(
+    SYSCALL_CHECK(
         send_files_in_directory_to_mapper(log_file, write_fd, input_path));
 
   MRCALL_CHECK(mr_log_info(log_file, "Main", "Main",
