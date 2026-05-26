@@ -18,7 +18,7 @@ int mr_log_init(mr_log_file_t* log, const char* log_file_path) {
     return -1;
   }
 
-  if ((log->sem = sem_open(MR_LOG_SEM_NAME, O_CREAT | O_EXCL | O_RDWR, 0600,
+  if ((log->sem = sem_open(MR_LOG_SEM_NAME, O_CREAT | O_RDWR, 0600,
                            1)) == SEM_FAILED) {
     // errno is set by sem_open
     fclose(log->file);
