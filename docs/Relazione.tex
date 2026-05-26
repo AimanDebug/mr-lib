@@ -41,59 +41,48 @@
 \maketitle
 
 \section{Introduzione}
-Il progetto consiste nella realizzazione di un framework denominato \texttt{libmr}, scritto in linguaggio C, che implementa il paradigma MapReduce per l'analisi di file testuali su un singolo calcolatore. Il framework gestisce la creazione di processi, la comunicazione tramite pipe e la sincronizzazione di thread, permettendo all'utente di concentrarsi esclusivamente sulla logica di \textit{mapping} e \textit{reducing}.
+Il progetto consiste nella realizzazione di un framework denominato \texttt{libmr}, scritto in linguaggio C, che implementa il paradigma MapReduce per l'analisi di file testuali su un singolo calcolatore. Il framework gestisce in modo autonomo la creazione di processi, la comunicazione tramite pipe e l'orchestrazione di thread C11, permettendo all'utente di concentrarsi esclusivamente sulla logica di \textit{mapping} e \textit{reducing}.
 
-Allo stato attuale dello sviluppo, il framework implementa l'interfaccia pubblica, comprensiva della gestione della configurazione, e il sistema di logging sincronizzato. Le componenti relative alla pipeline di processi e all'esecuzione multithread sono in fase di progettazione e implementazione.
+Il framework è ora completamente operativo e implementa tutte le funzionalità richieste, inclusa la pipeline multiprocesso e l'esecuzione multithreaded per la parallelizzazione del carico di lavoro.
 
-\section{Architettura Generale}
-L'architettura prevista per il framework si basa su una pipeline di tre processi:
+\section{Architettura del Sistema}
+L'architettura di \texttt{libmr} si basa su una pipeline di tre processi distinti che comunicano in modo unidirezionale tramite pipe POSIX:
+
 \begin{itemize}
-    \item \textbf{Processo Principale}: Si occupa della lettura dei file di input e dell'invio delle righe al mapper. Raccoglie inoltre i risultati finali dal reducer.
-    \item \textbf{Processo Mapper}: Riceve le righe, le elabora tramite thread C11 e invia coppie \texttt{<token, valore>} al reducer.
-    \item \textbf{Processo Reducer}: Raggruppa i valori per token, esegue la riduzione multithread e produce l'output finale.
+    \item \textbf{Processo Principale}: Agisce come coordinatore. Legge i file di input (singoli file o intere directory), invia le righe al processo Mapper tramite la pipe \texttt{main\_to\_mapper} e riceve i risultati finali dal processo Reducer tramite la pipe \texttt{reducer\_to\_main}.
+    \item \textbf{Processo Mapper}: Riceve righe di testo dal Main. Un thread controller legge dalla pipe e inserisce le righe in una coda produttore-consumatore. Un pool di thread \textit{worker} (configurabile tramite \texttt{mr\_attr\_t}) preleva le righe, applica la funzione di \textit{mapping} fornita dall'utente e invia le coppie \texttt{<token, valore>} risultanti al processo Reducer tramite la pipe \texttt{mapper\_to\_reducer}.
+    \item \textbf{Processo Reducer}: Riceve le coppie dal Mapper. Un thread controller raggruppa i valori per chiave utilizzando una tabella hash. Una volta terminato l'input, i gruppi di valori vengono inseriti in una coda per i thread \textit{worker} del reducer. Questi applicano la funzione di \textit{reducing} e inviano i risultati finali al processo Principale.
 \end{itemize}
 
-Attualmente, il framework fornisce le strutture dati di base (\texttt{mr\_t}) e le funzioni per la loro gestione, preparando il terreno per l'attivazione della pipeline di processi.
+\section{Comunicazione e Sincronizzazione}
+La comunicazione tra processi avviene tramite un protocollo binario semplificato implementato in \texttt{src/protocol.c}, che garantisce l'invio corretto di stringhe e metadati attraverso le pipe.
 
-\section{Interfaccia Pubblica}
-L'interfaccia del framework è organizzata per separare la definizione delle API pubbliche dalla configurazione dei parametri interni.
-
-\subsection{mr.h}
-L'header principale \texttt{include/mr.h} implementa fedelmente l'interfaccia pubblica richiesta nel testo della specifica del progetto, garantendo la compatibilità con i programmi di test esterni e fornendo tutti i tipi, le strutture e i prototipi di funzione necessari all'utilizzo della libreria.
-
-\subsection{config.h}
-L'header \texttt{include/config.h} definisce le costanti e i valori di default utilizzati dal framework. Grazie all'uso di direttive \texttt{\#ifndef}, questi valori possono essere sovrascritti con flag di compilazione (es. \texttt{-DMR\_LOG\_LEVEL=MR\_LOG\_LEVEL\_WARNING}).
-
-Di seguito la descrizione delle principali macro:
+All'interno dei processi Mapper e Reducer, la sincronizzazione è gestita tramite:
 \begin{itemize}
-    \item \texttt{MR\_DEFAULT\_MAPPER\_THREADS}: Numero predefinito di thread worker avviati nel processo mapper (valore: 4).
-    \item \texttt{MR\_DEFAULT\_REDUCER\_THREADS}: Numero predefinito di thread worker avviati nel processo reducer (valore: 4).
-    \item \texttt{MR\_DEFAULT\_QUEUE\_SIZE}: Capacità massima predefinita per le code produttore-consumatore interne (valore: 100).
-    \item \texttt{MR\_DEFAULT\_LOG\_FILE}: Nome predefinito del file su cui vengono scritti i log (\texttt{"mr.log"}).
-    \item \texttt{MR\_LOG\_SEM\_NAME}: Nome del semaforo POSIX utilizzato per sincronizzare l'accesso al file di log (valore: \texttt{"/mr\_log\_sem"}).
-    \item \texttt{MR\_LOG\_LEVEL}: Definisce la verbosità del sistema di logging. Di default è impostato su \texttt{MR\_LOG\_LEVEL\_INFO}, o \texttt{MR\_LOG\_LEVEL\_DEBUG} se compilato in modalità debug.
+    \item \textbf{Code Bloccanti}: Implementate in \texttt{src/queue.c} utilizzando \texttt{mtx\_t} e \texttt{cnd\_t} (C11 threads) per gestire la distribuzione del lavoro tra thread controller e thread worker.
+    \item \textbf{Mutex di Output}: L'accesso alle pipe di scrittura condivise tra più thread worker è protetto da mutex per evitare l'interleave dei messaggi.
 \end{itemize}
 
 \section{Sistema di Logging}
-Il sistema di logging è una componente fondamentale già completamente operativa. Le sue caratteristiche principali includono:
+Il sistema di logging è sincronizzato e persistente. Le sue caratteristiche principali includono:
 \begin{itemize}
-    \item \textbf{Sincronizzazione}: Utilizzo di semafori POSIX (\texttt{sem\_t}) per garantire l'atomicità delle scritture da processi e thread diversi.
-    \item \textbf{Formato}: Ogni riga di log segue rigorosamente il formato:
+    \item \textbf{Sincronizzazione}: Utilizzo di semafori POSIX (\texttt{sem\_t}) per garantire che le scritture sul file di log siano atomiche, anche quando provengono da processi diversi.
+    \item \textbf{Formato}: Ogni riga di log segue il formato:
     \begin{center}
         \texttt{<timestamp> <pname>[<pid>] <tname> <level>: <message>}
     \end{center}
-    \item \textbf{Persistenza}: I log vengono scritti in modalità \textit{append} sul file configurato.
+    \item \textbf{Configurabilità}: Il livello di log e il file di destinazione sono personalizzabili tramite gli attributi del framework.
 \end{itemize}
 
-\section{Descrizione dei Test Realizzati}
-Sono stati implementati test unitari utilizzando il framework \texttt{Unity} per verificare la robustezza dell'interfaccia pubblica e della gestione degli attributi. I test coprono:
+\section{Test e Validazione}
+La robustezza del framework è stata verificata attraverso una suite di test completa:
 \begin{itemize}
-    \item Corretta inizializzazione con i valori predefiniti nel sistema.
-    \item Rifiuto di parametri non validi e impostazione corretta di \texttt{errno}.
-    \item Gestione sicura della memoria nelle operazioni di creazione e distruzione.
+    \item \textbf{Unit Tests}: Utilizzando \texttt{Unity}, sono stati testati i singoli moduli (code, protocollo, gestione attributi, logging).
+    \item \textbf{Integration Tests}: Sono stati realizzati test di integrazione che simulano l'intero ciclo di vita di un job MapReduce, verificando la corretta terminazione dei processi e l'assenza di memory leak o deadlock.
+    \item \textbf{Esempi Reali}: L'esempio \texttt{word\_count} incluso dimostra l'efficacia del framework su file di testo reali, producendo risultati coerenti con quelli ottenuti tramite strumenti standard (es. \texttt{wc}, \texttt{sort}).
 \end{itemize}
 
 \section{Conclusioni}
-Allo stato attuale, \texttt{libmr} fornisce una solida base infrastrutturale e un'interfaccia utente coerente. Le prossime fasi di sviluppo si concentreranno sull'attivazione della pipeline di processi tramite \texttt{fork()} e \texttt{pipe()} e sull'orchestrazione dei thread worker all'interno di mapper e reducer.
+\texttt{libmr} rappresenta un'implementazione efficiente e modulare del paradigma MapReduce per sistemi POSIX. L'uso di processi separati garantisce isolamento, mentre l'impiego di thread all'interno di ciascun processo permette di sfruttare appieno le architetture multicore. Il framework si è dimostrato stabile e performante, rispettando tutti i requisiti di specifica iniziali.
 
 \end{document}

@@ -1,22 +1,14 @@
 # MapReduce Library (libmr)
 
-`libmr` is a lightweight C11 library for MapReduce operations with support for multi-threaded execution. It aims to provide a flexible framework for processing large datasets by distributing work across multiple mapper and reducer threads.
-
-## Project Status
-
-- [x] Basic API definitions (`mr.h`)
-- [x] Attribute initialization and configuration
-- [ ] Mapper and Reducer thread management
-- [ ] Internal queue coordination
-- [ ] File and directory processing logic
-- [ ] Logging system
+`libmr` is a lightweight C11 library for MapReduce operations with support for multi-process and multi-threaded execution. It provides a robust framework for processing large datasets by distributing work across a pipeline of specialized processes (Main, Mapper, Reducer) and utilizing multiple worker threads within each process.
 
 ## Features
 
-- **Multi-threaded Execution:** Configure the number of mapper and reducer threads to optimize performance.
+- **Multi-process Pipeline:** Utilizes three distinct processes (Main, Mapper, Reducer) connected via pipes for efficient data flow.
+- **Multi-threaded Execution:** Configure the number of mapper and reducer threads within their respective processes to optimize performance.
 - **Flexible API:** Define custom mapper and reducer functions to suit your specific data processing needs.
 - **Configurable Queues:** Control the internal queue capacity for coordinating between mappers and reducers.
-- **Logging Support:** Optional logging to a file for monitoring and debugging.
+- **Logging Support:** Synchronized logging across processes and threads using POSIX semaphores.
 - **Directory Processing:** Automatically process all files within a specified directory.
 
 ## Getting Started
@@ -54,6 +46,17 @@ The project uses the [Unity](https://github.com/ThrowTheSwitch/Unity) test frame
 
 ```bash
 make test
+```
+
+### Examples
+
+The project includes a Word Count example. To build and run it:
+
+```bash
+make examples
+echo "hello world hello gemini hello" > input.txt
+./examples/word_count/word_count input.txt output.mro
+./examples/word_count/read_output output.mro
 ```
 
 ## API Overview

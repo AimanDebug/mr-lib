@@ -20,9 +20,9 @@ bin_dir = bin
 lib_dir = lib
 int_dir = $(bin_dir)/intermediates
 
-.PHONY: all debug release build prepare clean test test-debug test-release run-tests docs
+.PHONY: all debug release build prepare clean test test-debug test-release run-tests docs examples
 
-all: debug release
+all: debug release examples
 
 debug:
 	@echo "Building in debug mode..."
@@ -46,8 +46,13 @@ test-release:
 	@$(MAKE) run-tests bin_dir=$(bin_dir)/release \
 		CFLAGS="$(CFLAGS) $(release_flags) $(TEST_CFLAGS)"
 
+examples: debug
+	@echo "Building examples..."
+	@$(MAKE) -C examples/word_count
+
 clean:
 	rm -rf $(bin_dir)/*
+	@$(MAKE) -C examples/word_count clean
 
 # -------------- Library Builder ------------------
 src_int_dir = $(int_dir)/src

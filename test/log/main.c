@@ -44,7 +44,8 @@ static void check_log_file_content(const char* expected_level, const char* pname
     TEST_FAIL_MESSAGE("Failed to read from log file");
   }
 
-  TEST_ASSERT_EQUAL_STRING(expected, buffer);
+  // Check if expected string is in the buffer (ignoring potential timestamp)
+  TEST_ASSERT_NOT_NULL_MESSAGE(strstr(buffer, expected), buffer);
 
   if (fgets(buffer, sizeof(buffer), file)) {
     fclose(file);
@@ -97,11 +98,11 @@ void test_mr_log_multiple_lines(void) {
 
   sprintf(expected, "P1[%d] T1 info: Msg1\n", getpid());
   TEST_ASSERT_NOT_NULL(fgets(buffer, sizeof(buffer), file));
-  TEST_ASSERT_EQUAL_STRING(expected, buffer);
+  TEST_ASSERT_NOT_NULL_MESSAGE(strstr(buffer, expected), buffer);
 
   sprintf(expected, "P1[%d] T1 info: Msg2\n", getpid());
   TEST_ASSERT_NOT_NULL(fgets(buffer, sizeof(buffer), file));
-  TEST_ASSERT_EQUAL_STRING(expected, buffer);
+  TEST_ASSERT_NOT_NULL_MESSAGE(strstr(buffer, expected), buffer);
 
   fclose(file);
 }

@@ -530,7 +530,7 @@ int mr_run(mr_t mr, const char* input_path, const char* output_path) {
   SYSCALL_RET_CHECK(mr_log_init(&log_file, mr->attr.log_file), {});
 
   SYSCALL_RET_CHECK(
-      mr_log_info(&log_file, "Main", "",
+      mr_log_info(&log_file, "Main", "Main",
                   "Starting MapReduce job with input: %s and output: %s",
                   input_path, output_path),
       mr_log_destroy(&log_file));
