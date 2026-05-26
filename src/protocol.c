@@ -206,7 +206,7 @@ static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
       continue;
     }
 
-    MRCALL_CHECK_CMD(
+    SYSCALL_CHECK_CMD(
         send_file_to_mapper(log_file, write_fd, namelist[i]->d_name), {
           mr_log_error(log_file, "Main", "Main",
                        "Failed to send file '%s' in directory '%s' to mapper",
@@ -377,7 +377,7 @@ int receive_output_from_reducer(mr_log_file_t* log_file, int read_fd,
   return 0;
 }
 
-int send_result_to_main(mr_log_file_t* log_file, int write_fd,
+int send_result_to_main_fd(mr_log_file_t* log_file, int write_fd,
                         const char* token, const void* result,
                         size_t result_size) {
   assert(log_file != NULL);
@@ -413,7 +413,7 @@ int send_result_to_main(mr_log_file_t* log_file, int write_fd,
   return 0;
 }
 
-int send_pair_to_reducer(mr_log_file_t* log_file, int write_fd,
+int send_pair_to_reducer_fd(mr_log_file_t* log_file, int write_fd,
                          const char* token, const void* value,
                          size_t value_size) {
   assert(log_file != NULL);
@@ -449,7 +449,7 @@ int send_pair_to_reducer(mr_log_file_t* log_file, int write_fd,
   return 0;
 }
 
-int receive_pair_from_mapper(mr_log_file_t* log_file, int read_fd,
+int receive_pair_from_mapper_fd(mr_log_file_t* log_file, int read_fd,
                              char** out_token, void** out_value,
                              size_t* out_value_size) {
   assert(log_file != NULL);
@@ -532,7 +532,7 @@ void mr_main_receiver_destroy(mr_main_receiver_t* receiver) {
   }
 }
 
-int receive_line_from_main(mr_log_file_t* log_file, int read_fd,
+int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
                            mr_main_receiver_t* receiver,
                            mr_file_line_t* out_line) {
   assert(log_file != NULL);
@@ -625,4 +625,20 @@ int receive_line_from_main(mr_log_file_t* log_file, int read_fd,
 
     return 0;
   }
+}
+
+int receive_line_from_main(mr_log_file_t* log_file, mr_main_receiver_t* receiver, mr_file_line_t* out_line) {
+  return receive_line_from_main_fd(log_file, STDIN_FILENO, receiver, out_line);
+}
+
+int send_pair_to_reducer(mr_log_file_t* log_file, const char* token, const void* value, size_t value_size) {
+  return send_pair_to_reducer_fd(log_file, STDOUT_FILENO, token, value, value_size);
+}
+
+int receive_pair_from_mapper(mr_log_file_t* log_file, char** out_token, void** out_value, size_t* out_value_size) {
+  return receive_pair_from_mapper_fd(log_file, STDIN_FILENO, out_token, out_value, out_value_size);
+}
+
+int send_result_to_main(mr_log_file_t* log_file, const char* token, const void* result, size_t result_size) {
+  return send_result_to_main_fd(log_file, STDOUT_FILENO, token, result, result_size);
 }

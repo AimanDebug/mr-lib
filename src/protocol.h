@@ -57,7 +57,7 @@ void mr_main_receiver_destroy(mr_main_receiver_t* receiver);
  * - receiver not NULL
  * - out_line not NULL
  */
-int receive_line_from_main(mr_log_file_t* log_file, int read_fd,
+int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
                            mr_main_receiver_t* receiver,
                            mr_file_line_t* out_line);
 
@@ -105,7 +105,7 @@ int receive_output_from_reducer(mr_log_file_t* log_file, int read_fd,
  * @pre - log_file not NULL
  * - token not NULL
  */
-int send_result_to_main(mr_log_file_t* log_file, int write_fd,
+int send_result_to_main_fd(mr_log_file_t* log_file, int write_fd,
                         const char* token, const void* result,
                         size_t result_size);
 
@@ -122,7 +122,7 @@ int send_result_to_main(mr_log_file_t* log_file, int write_fd,
  * @pre - log_file not NULL
  * - token not NULL
  */
-int send_pair_to_reducer(mr_log_file_t* log_file, int write_fd,
+int send_pair_to_reducer_fd(mr_log_file_t* log_file, int write_fd,
                          const char* token, const void* value,
                          size_t value_size);
 
@@ -142,7 +142,7 @@ int send_pair_to_reducer(mr_log_file_t* log_file, int write_fd,
  * - out_value not NULL
  * - out_value_size not NULL
  */
-int receive_pair_from_mapper(mr_log_file_t* log_file, int read_fd,
+int receive_pair_from_mapper_fd(mr_log_file_t* log_file, int read_fd,
                              char** out_token, void** out_value,
                              size_t* out_value_size);
 
@@ -169,5 +169,13 @@ ssize_t read_n(int fd, void* buffer, size_t n);
  * - buffer is not NULL
  */
 ssize_t write_n(int fd, const void* buffer, size_t n);
+
+int receive_line_from_main(mr_log_file_t* log_file, mr_main_receiver_t* receiver, mr_file_line_t* out_line);
+
+int send_pair_to_reducer(mr_log_file_t* log_file, const char* token, const void* value, size_t value_size);
+
+int receive_pair_from_mapper(mr_log_file_t* log_file, char** out_token, void** out_value, size_t* out_value_size);
+
+int send_result_to_main(mr_log_file_t* log_file, const char* token, const void* result, size_t result_size);
 
 #endif /* PROTOCOL_H */
