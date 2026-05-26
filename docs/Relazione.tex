@@ -68,8 +68,8 @@ Il file \texttt{include/config.h} definisce diverse macro che regolano il compor
     \item \texttt{MR\_DEFAULT\_QUEUE\_SIZE}: Capacità massima predefinita delle code interne (default: 100).
     \item \texttt{MR\_DEFAULT\_LOG\_FILE}: Nome predefinito del file di log (\texttt{"mr.log"}).
     \item \texttt{MR\_REDUCER\_HASH\_TABLE\_SIZE}: Dimensione della tabella hash utilizzata nel Reducer per il raggruppamento (default: 1024).
-    \item \texttt{MR\_LOG\_SEM\_NAME}: Nome del semaforo POSIX utilizzato per la sincronizzazione del log tra processi.
-    \item \texttt{MR\_LOG\_ENABLE\_TIMESTAMP}: Abilita o disabilita l'inserimento del timestamp in ogni riga di log.
+    \item \texttt{MR\_LOG\_SEM\_NAME}: Nome del semaforo POSIX utilizzato per la sincronizzazione del log tra processi (default: \texttt{"/mr\_log\_sem"}).
+    \item \texttt{MR\_LOG\_ENABLE\_TIMESTAMP}: Abilita o disabilita l'inserimento del timestamp in ogni riga di log (default: 1, abilitato).
     \item \texttt{MR\_LOG\_LEVEL}: Definisce il livello minimo di severità dei messaggi da registrare (DEBUG, INFO, WARNING, ERROR).
 \end{itemize}
 
@@ -111,11 +111,12 @@ Sia il Mapper che il Reducer sono multithreaded e utilizzano lo standard C11 (\t
 La comunicazione sulle pipe utilizza un protocollo binario basato su header a dimensione fissa (lunghezze esplicite).
 
 \subsection{Formato dei Messaggi}
-Ogni messaggio è composto da una \texttt{struct} di header seguita dai dati variabili:
+La comunicazione tra i processi avviene serializzando i dati attraverso messaggi binari strutturati. Ogni messaggio è composto da una struttura di header a dimensione fissa seguita da un payload a dimensione variabile:
+
 \begin{itemize}
-    \item \textbf{Mapper Input}: \texttt{mr\_file\_name\_header\_t} seguita dal nome file, e \texttt{mr\_line\_header\_t} seguita dal contenuto della riga.
-    \item \textbf{Intermedio (Mapper to Reducer)}: \texttt{mr\_pair\_header\_t} contenente \texttt{token\_length} e \texttt{value\_length}, seguita dai byte del token e del valore opaco.
-    \item \textbf{Output (Reducer to Main)}: \texttt{mr\_result\_header\_t} contenente \texttt{token\_length} e \texttt{result\_size}.
+    \item \textbf{Main $\rightarrow$ Mapper (Input)}: Il trasferimento dei file da elaborare prevede due tipologie di messaggi. All'inizio di un nuovo file viene inviato un header \texttt{mr\_file\_name\_header\_t} (contenente il campo \texttt{file\_name\_length} di tipo \texttt{size\_t}), seguito dai byte del percorso del file (senza terminatore \texttt{\textbackslash 0}). Successivamente, per le righe, viene inviato un header \texttt{mr\_line\_header\_t} (contenente un flag booleano \texttt{eof} per indicare la fine del file precedente, e la \texttt{line\_length} di tipo \texttt{size\_t}), seguito dai byte della riga (esclusi \texttt{\textbackslash n} e \texttt{\textbackslash 0}).
+    \item \textbf{Mapper $\rightarrow$ Reducer (Intermedio)}: Il trasferimento delle coppie intermedie utilizza l'header \texttt{mr\_pair\_header\_t}, che specifica \texttt{token\_length} e \texttt{value\_length} (entrambi \texttt{size\_t}). Questo header è immediatamente seguito dai byte del token e successivamente dai byte del valore opaco.
+    \item \textbf{Reducer $\rightarrow$ Main (Output)}: L'invio dei risultati aggregati avviene tramite un header \texttt{mr\_result\_header\_t}, contenente \texttt{token\_length} e \texttt{result\_size} (entrambi \texttt{size\_t}). Segue il payload con i byte del token e i byte del risultato.
 \end{itemize}
 
 Le funzioni \texttt{read\_n} e \texttt{write\_n} gestiscono letture e scritture parziali, garantendo l'integrità dei messaggi.
@@ -129,7 +130,7 @@ La sincronizzazione tra thread è gestita tramite:
 
 \section{Strutture Dati e Formati}
 \subsection{Tabella Hash nel Reducer}
-Il raggruppamento per token avviene tramite una tabella hash con \textit{chaining} di dimensione 1024. Ogni nodo della tabella mantiene un array dinamico di strutture \texttt{mr\_value\_t} per raccogliere tutti i valori intermedi associati a un singolo token.
+Il raggruppamento per token avviene tramite una tabella hash con \textit{chaining} (default dimensione 1024). Ogni nodo della tabella mantiene un array dinamico di strutture \texttt{mr\_value\_t} per raccogliere tutti i valori intermedi associati a un singolo token.
 
 \subsection{Formato di Output}
 Il file di output finale è un file binario a record. Ogni record contiene:
@@ -143,16 +144,20 @@ Il file di output finale è un file binario a record. Ogni record contiene:
 \section{Sistema di Logging}
 Il logging è sincronizzato tramite semafori POSIX per permettere a più processi di scrivere atomicamente sullo stesso file. Il formato è:
 \begin{center}
-    \texttt{[timestamp] [pname(pid)] [tname] [level]: message}
+    \texttt{<timestamp> <pname>[pid] <tname> <level>: <message>}
 \end{center}
 Vengono registrati eventi critici come la creazione di pipe, fork, avvio/terminazione di thread e statistiche finali (righe lette, coppie prodotte, token distinti).
 
 \section{Test e Validazione}
-La validazione del framework comprende:
+La validazione del framework è effettuata mediante il framework di test unitari \texttt{Unity}. I test coprono:
 \begin{itemize}
-    \item \textbf{Unit Tests}: Test isolati per i moduli \texttt{queue}, \texttt{protocol} e \texttt{log} utilizzando \texttt{Unity}.
-    \item \textbf{Integration Tests}: Esecuzione di job MapReduce completi (es. \texttt{word\_count}) verificando la correttezza dell'output rispetto a strumenti standard.
-    \item \textbf{Memory Safety}: Utilizzo di \texttt{valgrind} per assicurare l'assenza di leak e corretto rilascio delle risorse (pipe, thread, memoria).
+    \item \textbf{Core}: Verifica integralmente il ciclo di vita di un job MapReduce, dalla creazione alla distruzione, assicurando la corretta propagazione degli errori.
+    \item \textbf{Mapper}: Verifica che la funzione di mapping produca le coppie corrette per input di test.
+    \item \textbf{Reducer}: Verifica che la funzione di reducing produca i risultati attesi per gruppi di token e valori di test.
+    \item \textbf{Logging}: Verifica che i messaggi di log siano formattati correttamente e che la sincronizzazione funzioni senza interlacciamento.
+    \item \textbf{MapReduce (Interfaccia Pubblica)}: Verifica la corretta creazione e distruzione dell'handle \texttt{mr\_t}, la gestione degli attributi e la corretta propagazione degli errori.
+    \item \textbf{Protocollo di Comunicazione}: Test che verificano la corretta serializzazione e deserializzazione dei messaggi tra i processi, assicurando che i dati inviati corrispondano a quelli ricevuti.
+    \item \textbf{Queue}: Test che verificano il corretto funzionamento delle code sincronizzate, inclusi i casi di coda piena e vuota, e la corretta gestione della chiusura.
 \end{itemize}
 
 \section{Conclusioni}
