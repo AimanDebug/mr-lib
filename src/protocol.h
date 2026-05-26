@@ -29,7 +29,7 @@ typedef struct {
   char* current_file_name;
   size_t current_file_name_len;
   unsigned long current_line_number;
-  bool in_file;
+  bool file_finished;
 } mr_main_receiver_t;
 
 /**

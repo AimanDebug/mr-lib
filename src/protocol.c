@@ -459,19 +459,21 @@ int receive_pair_from_mapper_fd(mr_log_file_t* log_file, int read_fd,
   assert(out_value_size != NULL);
 
   mr_pair_header_t header;
-  ssize_t bytes_read = read_n(read_fd, &header, sizeof(header));
+  ssize_t bytes_read;
+  
+  SYSCALL(bytes_read, read_n(read_fd, &header, sizeof(header)), {
+    mr_log_error(log_file, "Mapper", "Controller",
+                 "Failed to read pair header from mapper process");
+    return -1;
+  });
 
   if (bytes_read == 0)
     return 1; // EOF
 
-  if (bytes_read != sizeof(header)) {
-    mr_log_error(log_file, "Reducer", "Controller",
-                 "Failed to read pair header from mapper process");
-    return -1;
-  }
-
   // Handle token
   *out_token = malloc(header.token_length + 1);
+
+  // In case there was no data to allocate failure is fine
   if (*out_token == NULL && header.token_length > 0) {
     mr_log_error(log_file, "Reducer", "Controller",
                  "Failed to allocate memory for token");
@@ -479,15 +481,15 @@ int receive_pair_from_mapper_fd(mr_log_file_t* log_file, int read_fd,
   }
 
   if (header.token_length > 0) {
-    if (read_n(read_fd, *out_token, header.token_length) !=
-        (ssize_t)header.token_length) {
+    SYSCALL_CHECK_CMD(read_n(read_fd, *out_token, header.token_length), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to read token from mapper process");
       free(*out_token);
       return -1;
-    }
+    });
   }
 
+  // If you can insert a null terminator
   if (*out_token != NULL) {
     (*out_token)[header.token_length] = '\0';
   }
@@ -502,14 +504,13 @@ int receive_pair_from_mapper_fd(mr_log_file_t* log_file, int read_fd,
   }
 
   if (header.value_length > 0) {
-    if (read_n(read_fd, *out_value, header.value_length) !=
-        (ssize_t)header.value_length) {
+    SYSCALL_CHECK_CMD(read_n(read_fd, *out_value, header.value_length), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to read value data from mapper process");
       free(*out_token);
       free(*out_value);
       return -1;
-    }
+    });
   }
 
   *out_value_size = header.value_length;
@@ -522,7 +523,7 @@ void mr_main_receiver_init(mr_main_receiver_t* receiver) {
   receiver->current_file_name = NULL;
   receiver->current_file_name_len = 0;
   receiver->current_line_number = 0;
-  receiver->in_file = false;
+  receiver->file_finished = true;
 }
 
 void mr_main_receiver_destroy(mr_main_receiver_t* receiver) {
@@ -541,18 +542,18 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
   assert(out_line != NULL);
 
   while (true) {
-    if (!receiver->in_file) {
+    if (receiver->file_finished) {
       mr_file_name_header_t fn_header;
-      ssize_t bytes_read = read_n(read_fd, &fn_header, sizeof(fn_header));
-
-      if (bytes_read == 0) {
-        return 1; // Pipe EOF
-      }
-
-      if (bytes_read != sizeof(fn_header)) {
+      ssize_t bytes_read;
+      
+      SYSCALL(bytes_read, read_n(read_fd, &fn_header, sizeof(fn_header)), {
         mr_log_error(log_file, "Mapper", "Controller",
                      "Failed to read file name header from main process");
         return -1;
+      });
+
+      if (bytes_read == 0) {
+        return 1; // Pipe EOF
       }
 
       free(receiver->current_file_name);
@@ -563,38 +564,34 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
         return -1;
       }
 
-      if (read_n(read_fd, receiver->current_file_name,
-                 fn_header.file_name_length) !=
-          (ssize_t)fn_header.file_name_length) {
+      SYSCALL(bytes_read, read_n(read_fd, receiver->current_file_name,
+                 fn_header.file_name_length), {
         mr_log_error(log_file, "Mapper", "Controller",
                      "Failed to read file name from main process");
         free(receiver->current_file_name);
         receiver->current_file_name = NULL;
         return -1;
-      }
+      });
+
       receiver->current_file_name[fn_header.file_name_length] = '\0';
       receiver->current_file_name_len = fn_header.file_name_length;
       receiver->current_line_number = 1;
-      receiver->in_file = true;
+      receiver->file_finished = false;
     }
 
     mr_line_header_t l_header;
-    ssize_t bytes_read = read_n(read_fd, &l_header, sizeof(l_header));
-
-    if (bytes_read == 0) {
-      mr_log_error(log_file, "Mapper", "Controller",
-                   "Unexpected EOF while reading line header");
-      return -1;
-    }
-
-    if (bytes_read != sizeof(l_header)) {
+    ssize_t bytes_read;
+    
+    SYSCALL(bytes_read, read_n(read_fd, &l_header, sizeof(l_header)), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to read line header from main process");
       return -1;
-    }
+    });
+
+    assert(bytes_read != 0); // Unexpected EOF in the middle of a file
 
     if (l_header.eof) {
-      receiver->in_file = false;
+      receiver->file_finished = true;
       continue; // Move to next file or pipe EOF
     }
 
@@ -612,13 +609,12 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
     }
 
     if (l_header.line_length > 0) {
-      if (read_n(read_fd, line_content, l_header.line_length) !=
-          (ssize_t)l_header.line_length) {
+      SYSCALL_CHECK_CMD(read_n(read_fd, line_content, l_header.line_length), {
         mr_log_error(log_file, "Mapper", "Controller",
                      "Failed to read line data from main process");
         free(line_content);
         return -1;
-      }
+      });
     }
     line_content[l_header.line_length] = '\0';
     out_line->line = line_content;
