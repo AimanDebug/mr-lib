@@ -46,10 +46,6 @@ test-release:
 	@$(MAKE) run-tests bin_dir=$(bin_dir)/release \
 		CFLAGS="$(CFLAGS) $(release_flags) $(TEST_CFLAGS)"
 
-examples: debug
-	@echo "Building examples..."
-	@$(MAKE) -C examples/word_count
-
 clean:
 	rm -rf $(bin_dir)/*
 	@$(MAKE) -C examples/word_count clean
@@ -106,3 +102,6 @@ docs: $(DOC_DIR)/$(DOC_NAME).tex
 	@cd $(DOC_DIR) && pdflatex -interaction=nonstopmode $(DOC_NAME).tex > /dev/null
 	@rm -f $(DOC_DIR)/$(DOC_NAME).aux $(DOC_DIR)/$(DOC_NAME).log $(DOC_DIR)/$(DOC_NAME).out
 	@echo "Documentation compiled: $(DOC_DIR)/$(DOC_NAME).pdf"
+
+examples:
+	@$(MAKE) -C examples/word_count
