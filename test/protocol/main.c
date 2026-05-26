@@ -142,6 +142,7 @@ void test_line_communication(void) {
     TEST_ASSERT_EQUAL(1, out_line.line_number);
     TEST_ASSERT_EQUAL_STRING(line1, out_line.line);
     free((void*)out_line.line);
+    free((void*)out_line.file_name);
 
     const char* line2 = "line2";
     mr_line_header_t l2_header = { .eof = false, .line_length = strlen(line2) };
@@ -152,6 +153,7 @@ void test_line_communication(void) {
     TEST_ASSERT_EQUAL(2, out_line.line_number);
     TEST_ASSERT_EQUAL_STRING(line2, out_line.line);
     free((void*)out_line.line);
+    free((void*)out_line.file_name);
 
     mr_line_header_t eof_header = { .eof = true, .line_length = 0 };
     write_n(pipefd[1], &eof_header, sizeof(eof_header));
