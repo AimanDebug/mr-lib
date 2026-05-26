@@ -1,6 +1,4 @@
-#include "test_mr.h"
 #include <unity.h>
-
 #include <mr.h>
 #include <config.h>
 
@@ -70,11 +68,16 @@ void test_mr_attr_destroy(void) {
     TEST_ASSERT_EQUAL_INT(-1, mr_attr_destroy(NULL));
 }
 
-void test_mr(void) {
+void setUp(void) {}
+void tearDown(void) {}
+
+int main(void) {
+    UNITY_BEGIN();
     RUN_TEST(test_mr_attr_init);
     RUN_TEST(test_mr_attr_set_mapper_threads);
     RUN_TEST(test_mr_attr_set_reducer_threads);
     RUN_TEST(test_mr_attr_set_queue_size);
     RUN_TEST(test_mr_attr_set_log_file);
     RUN_TEST(test_mr_attr_destroy);
+    return UNITY_END();
 }

@@ -1,5 +1,3 @@
-#include "test_log.h"
-
 #include <fcntl.h>
 #include <semaphore.h>
 #include <stdbool.h>
@@ -12,7 +10,7 @@
 
 #define TEST_LOG_FILE "test.log"
 #define TEST_STRING "This is a test log message"
-#define EXPECTED_STRING_FORMAT "Test Runner[%d] tt0 info: " TEST_STRING
+#define EXPECTED_STRING_FORMAT "Test Runner[%d] tt0 info: " TEST_STRING "\n"
 
 static bool check_log_file(void) {
   // Check if the log file exists and is writable
@@ -82,4 +80,11 @@ void test_mr_log_success(void) {
   remove(TEST_LOG_FILE);
 }
 
-void test_log(void) { RUN_TEST(test_mr_log_success); }
+void setUp(void) {}
+void tearDown(void) {}
+
+int main(void) {
+  UNITY_BEGIN();
+  RUN_TEST(test_mr_log_success);
+  return UNITY_END();
+}

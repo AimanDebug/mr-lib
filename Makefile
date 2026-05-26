@@ -68,19 +68,23 @@ test_dir = test
 test_int_dir = $(int_dir)/test
 unity_dir = $(lib_dir)/vendor/Unity
 
-test_sources = $(wildcard $(test_dir)/*.c)
-test_objects = $(test_sources:$(test_dir)/%.c=$(test_int_dir)/%.o)
+test_subdirs = $(wildcard $(test_dir)/*/)
+test_runners = $(patsubst $(test_dir)/%/, $(bin_dir)/test_%, $(test_subdirs))
 
-run-tests: prepare $(bin_dir)/test_runner
-	@./$(bin_dir)/test_runner
+run-tests: prepare $(test_runners)
+	@for runner in $(test_runners); do \
+		echo "Running $$runner..."; \
+		./$$runner || exit 1; \
+	done
 
-$(bin_dir)/test_runner: $(test_objects) $(test_int_dir)/unity.o $(bin_dir)/$(BINARY)
+$(bin_dir)/test_%: $(test_int_dir)/%/main.o $(test_int_dir)/unity.o $(bin_dir)/$(BINARY)
 	@$(CC) $(CFLAGS) $^ -o $@
 
 $(test_int_dir)/unity.o: $(unity_dir)/src/unity.c
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 $(test_int_dir)/%.o: $(test_dir)/%.c
+	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 # -------------- Utility Targets ------------------
