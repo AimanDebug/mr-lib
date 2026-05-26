@@ -98,7 +98,7 @@ int mr_create(mr_t* mr, const mr_attr_t* attr, mr_mapper_t mapper,
     return -1;
   }
 
-  MRCALL_CHECK_CMD(mr_init(*mr, attr, mapper, reducer, user_arg),
+  SYSCALL_RET_CHECK(mr_init(*mr, attr, mapper, reducer, user_arg),
                    free(*mr)); // free preserves errno
 
   return 0;
@@ -110,7 +110,7 @@ int mr_start(mr_t mr, const char* input_path, const char* output_path) {
     return -1;
   }
 
-  MRCALL_CHECK(mr_run(mr, input_path, output_path));
+  SYSCALL_RET_CHECK(mr_run(mr, input_path, output_path), {});
 
   return 0;
 }

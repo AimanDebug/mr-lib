@@ -55,7 +55,7 @@ static int spawn_mapper_process(mr_log_file_t* log_file, pid_t* mapper_pid,
                                 size_t queue_size, mr_mapper_t mapper,
                                 void* user_arg) {
   // Spawn mapper process
-  SYSCALL(*mapper_pid, fork(), {
+  SYSCALL_RET(*mapper_pid, fork(), {
     mr_log_error(log_file, "Main", "Main", "Failed to fork mapper process");
 
     for (uint8_t i = 0; i < 2; i++) {
@@ -66,11 +66,17 @@ static int spawn_mapper_process(mr_log_file_t* log_file, pid_t* mapper_pid,
 
   if (!(*mapper_pid)) {
     // Mapper process
-    SYSCALL_CHECK(mr_log_info(log_file, "Mapper", "Controller",
-                              "Mapper process started."));
+    SYSCALL_RET_CHECK(mr_log_info(log_file, "Mapper", "Controller",
+                              "Mapper process started."), {
+                                for (uint8_t i = 0; i < 2; i++) {
+                                  close(main_to_mapper[i]);
+                                  close(mapper_to_reducer[i]);
+                                  close(reducer_to_main[i]);
+                                }
+                              });
 
     // Close unused pipe ends
-    SYSCALL_CHECK_CMD(close(main_to_mapper[1]), {
+    SYSCALL_RET_CHECK(close(main_to_mapper[1]), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to close unused write end of main_to_mapper pipe");
 
@@ -83,7 +89,7 @@ static int spawn_mapper_process(mr_log_file_t* log_file, pid_t* mapper_pid,
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(mapper_to_reducer[0]), {
+    SYSCALL_RET_CHECK(close(mapper_to_reducer[0]), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to close unused read end of mapper_to_reducer pipe");
 
@@ -95,7 +101,7 @@ static int spawn_mapper_process(mr_log_file_t* log_file, pid_t* mapper_pid,
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(reducer_to_main[0]), {
+    SYSCALL_RET_CHECK(close(reducer_to_main[0]), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to close unused read end of reducer_to_main pipe");
 
@@ -106,7 +112,7 @@ static int spawn_mapper_process(mr_log_file_t* log_file, pid_t* mapper_pid,
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(reducer_to_main[1]), {
+    SYSCALL_RET_CHECK(close(reducer_to_main[1]), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to close unused write end reducer_to_main pipe");
 
@@ -117,7 +123,7 @@ static int spawn_mapper_process(mr_log_file_t* log_file, pid_t* mapper_pid,
     });
 
     // Redirect stdin
-    SYSCALL_CHECK_CMD(dup2(main_to_mapper[0], STDIN_FILENO), {
+    SYSCALL_RET_CHECK(dup2(main_to_mapper[0], STDIN_FILENO), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to redirect stdin for mapper process");
 
@@ -127,7 +133,7 @@ static int spawn_mapper_process(mr_log_file_t* log_file, pid_t* mapper_pid,
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(main_to_mapper[0]), {
+    SYSCALL_RET_CHECK(close(main_to_mapper[0]), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to close read end of main_to_mapper pipe");
 
@@ -137,7 +143,7 @@ static int spawn_mapper_process(mr_log_file_t* log_file, pid_t* mapper_pid,
     });
 
     // Redirect stdout
-    SYSCALL_CHECK_CMD(dup2(mapper_to_reducer[1], STDOUT_FILENO), {
+    SYSCALL_RET_CHECK(dup2(mapper_to_reducer[1], STDOUT_FILENO), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to redirect stdout for mapper process");
 
@@ -146,7 +152,7 @@ static int spawn_mapper_process(mr_log_file_t* log_file, pid_t* mapper_pid,
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(mapper_to_reducer[1]), {
+    SYSCALL_RET_CHECK(close(mapper_to_reducer[1]), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to close write end of mapper_to_reducer pipe");
 
@@ -169,7 +175,7 @@ static int spawn_reducer_process(mr_log_file_t* log_file, pid_t* reducer_pid,
                                  size_t queue_size, mr_reducer_t reducer,
                                  void* user_arg) {
 
-  SYSCALL(*reducer_pid, fork(), {
+  SYSCALL_RET(*reducer_pid, fork(), {
     mr_log_error(log_file, "Main", "Main", "Failed to fork reducer process");
 
     for (uint8_t i = 0; i < 2; i++) {
@@ -180,37 +186,43 @@ static int spawn_reducer_process(mr_log_file_t* log_file, pid_t* reducer_pid,
 
   if (!(*reducer_pid)) {
     // Reducer process
-    SYSCALL_CHECK(mr_log_info(log_file, "Reducer", "Controller",
-                              "Reducer process started."));
+    SYSCALL_RET_CHECK(mr_log_info(log_file, "Reducer", "Controller",
+                              "Reducer process started."), {
+                                for (uint8_t i = 0; i < 2; i++) {
+                                  close(main_to_mapper[i]);
+                                  close(mapper_to_reducer[i]);
+                                  close(reducer_to_main[i]);
+                                }
+                              });
 
     // Close unused pipe ends
-    SYSCALL_CHECK_CMD(close(main_to_mapper[0]), {
+    SYSCALL_RET_CHECK(close(main_to_mapper[0]), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to close unused read end of main_to_mapper pipe");
 
       close(main_to_mapper[1]);
 
-      for (uint8_t j = 0; j < 2; j++) {
-        close(mapper_to_reducer[j]);
-        close(reducer_to_main[j]);
+      for (uint8_t i = 0; i < 2; i++) {
+        close(mapper_to_reducer[i]);
+        close(reducer_to_main[i]);
       }
 
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(main_to_mapper[1]), {
+    SYSCALL_RET_CHECK(close(main_to_mapper[1]), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to close unused write end of main_to_mapper pipe");
 
-      for (uint8_t j = 0; j < 2; j++) {
-        close(mapper_to_reducer[j]);
-        close(reducer_to_main[j]);
+      for (uint8_t i = 0; i < 2; i++) {
+        close(mapper_to_reducer[i]);
+        close(reducer_to_main[i]);
       }
 
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(mapper_to_reducer[1]), {
+    SYSCALL_RET_CHECK(close(mapper_to_reducer[1]), {
       mr_log_error(
           log_file, "Reducer", "Controller",
           "Failed to close unused write end of mapper_to_reducer pipe");
@@ -222,7 +234,7 @@ static int spawn_reducer_process(mr_log_file_t* log_file, pid_t* reducer_pid,
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(reducer_to_main[0]), {
+    SYSCALL_RET_CHECK(close(reducer_to_main[0]), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to close unused read end of reducer_to_main pipe");
 
@@ -233,7 +245,7 @@ static int spawn_reducer_process(mr_log_file_t* log_file, pid_t* reducer_pid,
     });
 
     // Redirect stdin and stdout
-    SYSCALL_CHECK_CMD(dup2(mapper_to_reducer[0], STDIN_FILENO), {
+    SYSCALL_RET_CHECK(dup2(mapper_to_reducer[0], STDIN_FILENO), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to redirect stdin for reducer process");
 
@@ -243,7 +255,7 @@ static int spawn_reducer_process(mr_log_file_t* log_file, pid_t* reducer_pid,
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(mapper_to_reducer[0]), {
+    SYSCALL_RET_CHECK(close(mapper_to_reducer[0]), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to close read end of mapper_to_reducer pipe");
 
@@ -252,7 +264,7 @@ static int spawn_reducer_process(mr_log_file_t* log_file, pid_t* reducer_pid,
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(dup2(reducer_to_main[1], STDOUT_FILENO), {
+    SYSCALL_RET_CHECK(dup2(reducer_to_main[1], STDOUT_FILENO), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to redirect stdout for reducer process");
 
@@ -261,7 +273,7 @@ static int spawn_reducer_process(mr_log_file_t* log_file, pid_t* reducer_pid,
       _exit(EXIT_FAILURE);
     });
 
-    SYSCALL_CHECK_CMD(close(reducer_to_main[1]), {
+    SYSCALL_RET_CHECK(close(reducer_to_main[1]), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to close write end of reducer_to_reducer pipe");
 
@@ -280,25 +292,25 @@ static int wait_for_process(mr_log_file_t* log_file, const char* process_name,
                             pid_t pid) {
   int status;
 
-  SYSCALL_CHECK_CMD(waitpid(pid, &status, 0), {
+  SYSCALL_RET_CHECK(waitpid(pid, &status, 0), {
     mr_log_error(log_file, "Main", "Main", "Failed to wait for %s process",
                  process_name);
   });
 
   if (WIFEXITED(status)) {
     int exit_code = WEXITSTATUS(status);
-    MRCALL_CHECK(mr_log_info(log_file, "Main", "Main",
+    SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
                              "%s process exited with code %d", process_name,
-                             exit_code));
+                             exit_code), {});
   } else if (WIFSIGNALED(status)) {
     int signal_num = WTERMSIG(status);
-    MRCALL_CHECK(mr_log_warning(log_file, "Main", "Main",
+    SYSCALL_RET_CHECK(mr_log_warning(log_file, "Main", "Main",
                                 "%s process was terminated by signal %d",
-                                process_name, signal_num));
+                                process_name, signal_num), {});
   } else {
-    MRCALL_CHECK(mr_log_warning(log_file, "Main", "Main",
+    SYSCALL_RET_CHECK(mr_log_warning(log_file, "Main", "Main",
                                 "%s process terminated abnormally",
-                                process_name));
+                                process_name), {});
   }
 
   return 0;
@@ -306,19 +318,19 @@ static int wait_for_process(mr_log_file_t* log_file, const char* process_name,
 
 static int spawn_processes(mr_t mr, const char* input_path,
                            const char* output_path, mr_log_file_t* log_file) {
-  SYSCALL_CHECK(mr_log_info(log_file, "Main", "Main",
-                            "Spawning mapper and reducer processes..."));
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
+                            "Spawning mapper and reducer processes..."), {});
 
   pid_t mapper_pid, reducer_pid;
   int main_to_mapper[2], mapper_to_reducer[2], reducer_to_main[2];
 
   // Open pipes
-  SYSCALL_CHECK_CMD(pipe(main_to_mapper), {
+  SYSCALL_RET_CHECK(pipe(main_to_mapper), {
     mr_log_error(log_file, "Main", "Main",
                  "Failed to create pipe for main to mapper communication");
   });
 
-  SYSCALL_CHECK_CMD(pipe(mapper_to_reducer), {
+  SYSCALL_RET_CHECK(pipe(mapper_to_reducer), {
     mr_log_error(log_file, "Main", "Main",
                  "Failed to create pipe for mapper to reducer communication");
 
@@ -326,7 +338,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
       close(main_to_mapper[i]);
   });
 
-  SYSCALL_CHECK_CMD(pipe(reducer_to_main), {
+  SYSCALL_RET_CHECK(pipe(reducer_to_main), {
     mr_log_error(log_file, "Main", "Main",
                  "Failed to create pipe for reducer to main communication");
 
@@ -337,7 +349,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
   });
 
   // Spawn mapper
-  SYSCALL_CHECK_CMD(spawn_mapper_process(log_file, &mapper_pid, main_to_mapper,
+  SYSCALL_RET_CHECK(spawn_mapper_process(log_file, &mapper_pid, main_to_mapper,
                                          mapper_to_reducer, reducer_to_main,
                                          mr->attr.mapper_threads,
                                          mr->attr.queue_size, mr->mapper,
@@ -354,7 +366,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
                     });
 
   // Spawn reducer
-  SYSCALL_CHECK_CMD(
+  SYSCALL_RET_CHECK(
       spawn_reducer_process(log_file, &reducer_pid, main_to_mapper,
                             mapper_to_reducer, reducer_to_main,
                             mr->attr.reducer_threads, mr->attr.queue_size,
@@ -375,7 +387,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
       });
 
   // Close unused pipe ends in main process
-  SYSCALL_CHECK_CMD(close(main_to_mapper[0]), {
+  SYSCALL_RET_CHECK(close(main_to_mapper[0]), {
     kill(mapper_pid, SIGTERM);
     waitpid(mapper_pid, NULL, 0);
 
@@ -387,7 +399,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
     }
   });
 
-  SYSCALL_CHECK_CMD(close(mapper_to_reducer[0]), {
+  SYSCALL_RET_CHECK(close(mapper_to_reducer[0]), {
     kill(mapper_pid, SIGTERM);
     kill(reducer_pid, SIGTERM);
     waitpid(mapper_pid, NULL, 0);
@@ -402,7 +414,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
     }
   });
 
-  SYSCALL_CHECK_CMD(close(mapper_to_reducer[1]), {
+  SYSCALL_RET_CHECK(close(mapper_to_reducer[1]), {
     kill(mapper_pid, SIGTERM);
     kill(reducer_pid, SIGTERM);
     waitpid(mapper_pid, NULL, 0);
@@ -415,7 +427,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
     }
   });
 
-  SYSCALL_CHECK_CMD(close(reducer_to_main[1]), {
+  SYSCALL_RET_CHECK(close(reducer_to_main[1]), {
     kill(mapper_pid, SIGTERM);
     kill(reducer_pid, SIGTERM);
     waitpid(mapper_pid, NULL, 0);
@@ -429,7 +441,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
     }
   });
 
-  MRCALL_CHECK_CMD(mr_log_info(log_file, "Main", "Main",
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
                                "Successfully spawned mapper (PID: %d) and "
                                "reducer (PID: %d) processes",
                                mapper_pid, reducer_pid),
@@ -443,7 +455,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
                      close(reducer_to_main[0]);
                    });
 
-  MRCALL_CHECK_CMD(
+  SYSCALL_RET_CHECK(
       send_input_to_mapper(log_file, main_to_mapper[1], input_path), {
         mr_log_error(log_file, "Main", "Main",
                      "Failed to send input to mapper process");
@@ -456,7 +468,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
         close(reducer_to_main[0]);
       });
 
-  SYSCALL_CHECK_CMD(close(main_to_mapper[1]), {
+  SYSCALL_RET_CHECK(close(main_to_mapper[1]), {
     mr_log_error(log_file, "Main", "Main",
                  "Failed to close write end of main_to_mapper pipe");
 
@@ -468,7 +480,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
     close(reducer_to_main[0]);
   });
 
-  MRCALL_CHECK_CMD(
+  SYSCALL_RET_CHECK(
       receive_output_from_reducer(log_file, reducer_to_main[0], output_path), {
         mr_log_error(log_file, "Main", "Main",
                      "Failed to receive output from reducer process");
@@ -481,7 +493,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
         close(reducer_to_main[0]);
       });
 
-  SYSCALL_CHECK_CMD(close(reducer_to_main[0]), {
+  SYSCALL_RET_CHECK(close(reducer_to_main[0]), {
     mr_log_error(log_file, "Main", "Main",
                  "Failed to close read end of reducer_to_main pipe");
 
@@ -492,7 +504,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
   });
 
   // Wait for the processes to finish
-  MRCALL_CHECK_CMD(wait_for_process(log_file, "Mapper", mapper_pid), {
+  SYSCALL_RET_CHECK(wait_for_process(log_file, "Mapper", mapper_pid), {
     mr_log_error(log_file, "Main", "Main",
                  "Failed to wait for mapper process to finish");
 
@@ -500,7 +512,7 @@ static int spawn_processes(mr_t mr, const char* input_path,
     waitpid(reducer_pid, NULL, 0);
   });
 
-  MRCALL_CHECK_CMD(wait_for_process(log_file, "Reducer", reducer_pid), {
+  SYSCALL_RET_CHECK(wait_for_process(log_file, "Reducer", reducer_pid), {
     mr_log_error(log_file, "Main", "Main",
                  "Failed to wait for reducer process to finish");
   });
@@ -515,18 +527,18 @@ int mr_run(mr_t mr, const char* input_path, const char* output_path) {
 
   mr_log_file_t log_file;
 
-  MRCALL_CHECK(mr_log_init(&log_file, mr->attr.log_file));
+  SYSCALL_RET_CHECK(mr_log_init(&log_file, mr->attr.log_file), {});
 
-  MRCALL_CHECK_CMD(
+  SYSCALL_RET_CHECK(
       mr_log_info(&log_file, "Main", "",
                   "Starting MapReduce job with input: %s and output: %s",
                   input_path, output_path),
       mr_log_destroy(&log_file));
 
-  MRCALL_CHECK_CMD(spawn_processes(mr, input_path, output_path, &log_file),
+  SYSCALL_RET_CHECK(spawn_processes(mr, input_path, output_path, &log_file),
                    mr_log_destroy(&log_file));
 
-  MRCALL_CHECK(mr_log_destroy(&log_file));
+  SYSCALL_RET_CHECK(mr_log_destroy(&log_file), {});
 
   return 0;
 }

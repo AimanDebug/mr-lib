@@ -76,21 +76,18 @@ static int mapper_worker(void* arg) {
                              .pairs_count = t_arg->pairs_count,
                              .thread_name = t_arg->thread_name};
 
-  MRCALL_CHECK_CMD(mr_log_info(t_arg->log_file, "Mapper", t_arg->thread_name,
+  SYSCALL_EXIT_CHECK(mr_log_info(t_arg->log_file, "Mapper", t_arg->thread_name,
                            "Mapper worker thread started"), {
-    return EXIT_FAILURE;
                            });
 
   while (mr_queue_pop(t_arg->queue, &line) == 0) {
-    SYSCALL_CHECK_CMD(t_arg->mapper(&line, mapper_emit, &e_arg, t_arg->user_arg), {
+    SYSCALL_EXIT_CHECK(t_arg->mapper(&line, mapper_emit, &e_arg, t_arg->user_arg), {
       mr_log_error(t_arg->log_file, "Mapper", t_arg->thread_name,
                    "User mapper function failed for file %s, line %lu",
                    line.file_name, line.line_number);
 
       free((void*)line.line);
       free((void*)line.file_name);
-
-      return EXIT_FAILURE;
     });
 
     // Free memory allocated by receive_line_from_main_fd and our strdup
@@ -98,9 +95,8 @@ static int mapper_worker(void* arg) {
     free((void*)line.file_name);
   }
 
-  MRCALL_CHECK_CMD(mr_log_info(t_arg->log_file, "Mapper", t_arg->thread_name,
+  SYSCALL_EXIT_CHECK(mr_log_info(t_arg->log_file, "Mapper", t_arg->thread_name,
                            "Mapper worker thread finished"), {
-    return EXIT_FAILURE;
   });
 
   return 0;
@@ -108,17 +104,17 @@ static int mapper_worker(void* arg) {
 
 int mapper_process_main(mr_log_file_t* log_file, size_t mapper_threads,
                         size_t queue_size, mr_mapper_t mapper, void* user_arg) {
-  MRCALL_CHECK(mr_log_info(log_file, "Mapper", "Controller",
+  SYSCALL_EXIT_CHECK(mr_log_info(log_file, "Mapper", "Controller",
                            "Mapper process started with %zu threads and queue "
                            "size %zu",
-                           mapper_threads, queue_size));
+                           mapper_threads, queue_size), {
+                           });
 
   mr_queue_t queue;
-  if (mr_queue_init(&queue, queue_size, sizeof(mr_file_line_t)) != 0) {
+  SYSCALL_EXIT_CHECK(mr_queue_init(&queue, queue_size, sizeof(mr_file_line_t)), {
     mr_log_error(log_file, "Mapper", "Controller",
                  "Failed to initialize mapper queue");
-    return EXIT_FAILURE;
-  }
+  });
 
   mtx_t stdout_mutex;
   if (mtx_init(&stdout_mutex, mtx_plain) != thrd_success) {
@@ -178,7 +174,7 @@ int mapper_process_main(mr_log_file_t* log_file, size_t mapper_threads,
   int res;
   while ((res = receive_line_from_main(log_file, &receiver, &line)) == 0) {
     lines_count++;
-    SYSCALL_CHECK_CMD(mr_queue_push(&queue, &line), {
+    SYSCALL_EXIT_CHECK(mr_queue_push(&queue, &line), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to push line to queue");
       free((void*)line.line);
@@ -187,9 +183,8 @@ int mapper_process_main(mr_log_file_t* log_file, size_t mapper_threads,
     });
   }
 
-  SYSCALL_CHECK_CMD(mr_queue_close(&queue), {
+  SYSCALL_EXIT_CHECK(mr_queue_close(&queue), {
     mr_log_error(log_file, "Mapper", "Controller", "Failed to close queue");
-    return EXIT_FAILURE;
   });
 
   for (size_t i = 0; i < mapper_threads; ++i) {
@@ -212,17 +207,15 @@ int mapper_process_main(mr_log_file_t* log_file, size_t mapper_threads,
   free(threads);
   free(t_args);
 
-  SYSCALL_CHECK_CMD(res, {
+  SYSCALL_EXIT_CHECK(res, {
     mr_log_error(log_file, "Mapper", "Controller",
                  "Error receiving lines from main process");
-    return EXIT_FAILURE;
   });
 
-  MRCALL_CHECK_CMD(mr_log_info(log_file, "Mapper", "Controller",
+  SYSCALL_EXIT_CHECK(mr_log_info(log_file, "Mapper", "Controller",
                            "Mapper process finished: %zu lines received, %zu "
                            "pairs produced",
                            lines_count, pairs_count), {
-    return EXIT_FAILURE;
   });
 
   return EXIT_SUCCESS;

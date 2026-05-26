@@ -21,7 +21,7 @@ ssize_t read_n(int fd, void* buffer, size_t n) {
   while (total_read < n) {
     ssize_t bytes_read;
 
-    SYSCALL(bytes_read, read(fd, buf_ptr + total_read, n - total_read), {});
+    SYSCALL_RET(bytes_read, read(fd, buf_ptr + total_read, n - total_read), {});
 
     if (bytes_read == 0) // EOF
       return total_read;
@@ -42,7 +42,7 @@ ssize_t write_n(int fd, const void* buffer, size_t n) {
   while (total_written < n) {
     ssize_t bytes_written;
 
-    SYSCALL(bytes_written,
+    SYSCALL_RET(bytes_written,
             write(fd, buf_ptr + total_written, n - total_written), {});
 
     total_written += bytes_written;
@@ -54,7 +54,7 @@ ssize_t write_n(int fd, const void* buffer, size_t n) {
 static int is_directory(mr_log_file_t* log_file, const char* path) {
   struct stat path_stat;
 
-  SYSCALL_CHECK_CMD(stat(path, &path_stat), {
+  SYSCALL_RET_CHECK(stat(path, &path_stat), {
     mr_log_error(log_file, "Main", "Main", "Failed to stat path '%s'", path);
   });
 
@@ -67,8 +67,8 @@ static int send_file_to_mapper(mr_log_file_t* log_file, int write_fd,
   assert(write_fd >= 0);
   assert(file_path != NULL);
 
-  MRCALL_CHECK(mr_log_info(log_file, "Main", "Main",
-                           "Sending file '%s' to mapper", file_path));
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
+                           "Sending file '%s' to mapper", file_path), {});
 
   FILE* file = fopen(file_path, "r");
 
@@ -81,7 +81,7 @@ static int send_file_to_mapper(mr_log_file_t* log_file, int write_fd,
   size_t file_path_len = strlen(file_path);
   mr_file_name_header_t file_name_header = {.file_name_length = file_path_len};
 
-  SYSCALL_CHECK_CMD(
+  SYSCALL_RET_CHECK(
       write_n(write_fd, &file_name_header, sizeof(file_name_header)), {
         mr_log_error(log_file, "Main", "Main",
                      "Failed to send file name header for file '%s'",
@@ -89,7 +89,7 @@ static int send_file_to_mapper(mr_log_file_t* log_file, int write_fd,
         fclose(file);
       });
 
-  SYSCALL_CHECK_CMD(write_n(write_fd, file_path, file_path_len), {
+  SYSCALL_RET_CHECK(write_n(write_fd, file_path, file_path_len), {
     mr_log_error(log_file, "Main", "Main",
                  "Failed to send file name string for file '%s'", file_path);
     fclose(file);
@@ -107,7 +107,7 @@ static int send_file_to_mapper(mr_log_file_t* log_file, int write_fd,
 
     mr_line_header_t line_header = {.eof = false, .line_length = line_len};
 
-    SYSCALL_CHECK_CMD(write_n(write_fd, &line_header, sizeof(line_header)), {
+    SYSCALL_RET_CHECK(write_n(write_fd, &line_header, sizeof(line_header)), {
       mr_log_error(log_file, "Main", "Main",
                    "Failed to send line header for file '%s'", file_path);
       free(buffer);
@@ -115,7 +115,7 @@ static int send_file_to_mapper(mr_log_file_t* log_file, int write_fd,
     });
 
     if (line_len > 0) {
-      SYSCALL_CHECK_CMD(write_n(write_fd, buffer, line_len), {
+      SYSCALL_RET_CHECK(write_n(write_fd, buffer, line_len), {
         mr_log_error(log_file, "Main", "Main",
                      "Failed to send line data for file '%s'", file_path);
         free(buffer);
@@ -136,7 +136,7 @@ static int send_file_to_mapper(mr_log_file_t* log_file, int write_fd,
   // Send end of file header
   mr_line_header_t eof_header = {.eof = true, .line_length = 0};
 
-  SYSCALL_CHECK_CMD(write_n(write_fd, &eof_header, sizeof(eof_header)), {
+  SYSCALL_RET_CHECK(write_n(write_fd, &eof_header, sizeof(eof_header)), {
     mr_log_error(log_file, "Main", "Main", "Failed to send eof for file '%s'",
                  file_path);
     fclose(file);
@@ -148,8 +148,8 @@ static int send_file_to_mapper(mr_log_file_t* log_file, int write_fd,
     return -1;
   }
 
-  MRCALL_CHECK(mr_log_info(log_file, "Main", "Main",
-                           "Finished sending file '%s' to mapper", file_path));
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
+                           "Finished sending file '%s' to mapper", file_path), {});
 
   return 0;
 }
@@ -157,9 +157,9 @@ static int send_file_to_mapper(mr_log_file_t* log_file, int write_fd,
 static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
                                              int write_fd,
                                              const char* dir_path) {
-  MRCALL_CHECK(mr_log_info(
+  SYSCALL_RET_CHECK(mr_log_info(
       log_file, "Main", "Main",
-      "Scanning directory '%s' for files to send to mapper", dir_path));
+      "Scanning directory '%s' for files to send to mapper", dir_path), {});
 
   struct dirent** namelist;
   int files;
@@ -172,7 +172,7 @@ static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
     return -1;
   }
 
-  MRCALL_CHECK_CMD(mr_log_info(log_file, "Main", "Main",
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
                                "Found %d entries in directory '%s'", files,
                                dir_path),
                    {
@@ -185,7 +185,7 @@ static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
   for (int i = 0; i < files; i++) {
     int is_dir;
 
-    SYSCALL(is_dir, is_directory(log_file, namelist[i]->d_name), {
+    SYSCALL_RET(is_dir, is_directory(log_file, namelist[i]->d_name), {
       mr_log_error(log_file, "Main", "Main",
                    "Failed to determine if entry '%s' is a directory",
                    namelist[i]->d_name);
@@ -206,7 +206,7 @@ static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
       continue;
     }
 
-    SYSCALL_CHECK_CMD(
+    SYSCALL_RET_CHECK(
         send_file_to_mapper(log_file, write_fd, namelist[i]->d_name), {
           mr_log_error(log_file, "Main", "Main",
                        "Failed to send file '%s' in directory '%s' to mapper",
@@ -224,9 +224,9 @@ static int send_files_in_directory_to_mapper(mr_log_file_t* log_file,
 
   free(namelist);
 
-  MRCALL_CHECK(mr_log_info(log_file, "Main", "Main",
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
                            "Finished sending files in directory '%s' to mapper",
-                           dir_path));
+                           dir_path), {});
 
   return 0;
 }
@@ -239,20 +239,20 @@ int send_input_to_mapper(mr_log_file_t* log_file, int write_fd,
 
   int is_dir;
 
-  SYSCALL(is_dir, is_directory(log_file, input_path), {});
+  SYSCALL_RET(is_dir, is_directory(log_file, input_path), {});
 
-  MRCALL_CHECK(mr_log_info(log_file, "Main", "Main", "Input path '%s' is a %s",
-                           input_path, is_dir ? "directory" : "file"));
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main", "Input path '%s' is a %s",
+                           input_path, is_dir ? "directory" : "file"), {});
 
   if (!is_dir)
-    SYSCALL_CHECK(send_file_to_mapper(log_file, write_fd, input_path));
+    SYSCALL_RET_CHECK(send_file_to_mapper(log_file, write_fd, input_path), {});
   else
-    SYSCALL_CHECK(
-        send_files_in_directory_to_mapper(log_file, write_fd, input_path));
+    SYSCALL_RET_CHECK(
+        send_files_in_directory_to_mapper(log_file, write_fd, input_path), {});
 
-  MRCALL_CHECK(mr_log_info(log_file, "Main", "Main",
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
                            "Finished sending input from path '%s' to mapper",
-                           input_path));
+                           input_path), {});
 
   return 0;
 }
@@ -263,9 +263,9 @@ int receive_output_from_reducer(mr_log_file_t* log_file, int read_fd,
   assert(read_fd >= 0);
   assert(output_path != NULL);
 
-  MRCALL_CHECK(mr_log_info(log_file, "Main", "Main",
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
                            "Receiving output from reducer and writing to '%s'",
-                           output_path));
+                           output_path), {});
 
   FILE* out_file = fopen(output_path, "wb"); // Use binary mode for consistency
   if (out_file == NULL) {
@@ -371,8 +371,8 @@ int receive_output_from_reducer(mr_log_file_t* log_file, int read_fd,
     return -1;
   }
 
-  MRCALL_CHECK(mr_log_info(log_file, "Main", "Main",
-                           "Finished receiving output from reducer"));
+  SYSCALL_RET_CHECK(mr_log_info(log_file, "Main", "Main",
+                           "Finished receiving output from reducer"), {});
 
   return 0;
 }
@@ -390,13 +390,13 @@ int send_result_to_main_fd(mr_log_file_t* log_file, int write_fd,
       .result_size = result_size,
   };
 
-  SYSCALL_CHECK_CMD(write_n(write_fd, &header, sizeof(header)), {
+  SYSCALL_RET_CHECK(write_n(write_fd, &header, sizeof(header)), {
     mr_log_error(log_file, "Reducer", "Controller",
                  "Failed to send result header to main process");
   });
 
   if (token_len > 0) {
-    SYSCALL_CHECK_CMD(write_n(write_fd, token, token_len), {
+    SYSCALL_RET_CHECK(write_n(write_fd, token, token_len), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to send token to main process");
     });
@@ -404,7 +404,7 @@ int send_result_to_main_fd(mr_log_file_t* log_file, int write_fd,
 
   if (result_size > 0) {
     assert(result != NULL);
-    SYSCALL_CHECK_CMD(write_n(write_fd, result, result_size), {
+    SYSCALL_RET_CHECK(write_n(write_fd, result, result_size), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to send result data to main process");
     });
@@ -426,13 +426,13 @@ int send_pair_to_reducer_fd(mr_log_file_t* log_file, int write_fd,
       .value_length = value_size,
   };
 
-  SYSCALL_CHECK_CMD(write_n(write_fd, &header, sizeof(header)), {
+  SYSCALL_RET_CHECK(write_n(write_fd, &header, sizeof(header)), {
     mr_log_error(log_file, "Mapper", "Controller",
                  "Failed to send pair header to reducer process");
   });
 
   if (token_len > 0) {
-    SYSCALL_CHECK_CMD(write_n(write_fd, token, token_len), {
+    SYSCALL_RET_CHECK(write_n(write_fd, token, token_len), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to send token to reducer process");
     });
@@ -440,7 +440,7 @@ int send_pair_to_reducer_fd(mr_log_file_t* log_file, int write_fd,
 
   if (value_size > 0) {
     assert(value != NULL);
-    SYSCALL_CHECK_CMD(write_n(write_fd, value, value_size), {
+    SYSCALL_RET_CHECK(write_n(write_fd, value, value_size), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to send value data to reducer process");
     });
@@ -461,7 +461,7 @@ int receive_pair_from_mapper_fd(mr_log_file_t* log_file, int read_fd,
   mr_pair_header_t header;
   ssize_t bytes_read;
   
-  SYSCALL(bytes_read, read_n(read_fd, &header, sizeof(header)), {
+  SYSCALL_RET(bytes_read, read_n(read_fd, &header, sizeof(header)), {
     mr_log_error(log_file, "Mapper", "Controller",
                  "Failed to read pair header from mapper process");
     return -1;
@@ -481,7 +481,7 @@ int receive_pair_from_mapper_fd(mr_log_file_t* log_file, int read_fd,
   }
 
   if (header.token_length > 0) {
-    SYSCALL_CHECK_CMD(read_n(read_fd, *out_token, header.token_length), {
+    SYSCALL_RET_CHECK(read_n(read_fd, *out_token, header.token_length), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to read token from mapper process");
       free(*out_token);
@@ -504,7 +504,7 @@ int receive_pair_from_mapper_fd(mr_log_file_t* log_file, int read_fd,
   }
 
   if (header.value_length > 0) {
-    SYSCALL_CHECK_CMD(read_n(read_fd, *out_value, header.value_length), {
+    SYSCALL_RET_CHECK(read_n(read_fd, *out_value, header.value_length), {
       mr_log_error(log_file, "Reducer", "Controller",
                    "Failed to read value data from mapper process");
       free(*out_token);
@@ -546,7 +546,7 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
       mr_file_name_header_t fn_header;
       ssize_t bytes_read;
       
-      SYSCALL(bytes_read, read_n(read_fd, &fn_header, sizeof(fn_header)), {
+      SYSCALL_RET(bytes_read, read_n(read_fd, &fn_header, sizeof(fn_header)), {
         mr_log_error(log_file, "Mapper", "Controller",
                      "Failed to read file name header from main process");
         return -1;
@@ -566,7 +566,7 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
         return -1;
       }
 
-      SYSCALL(bytes_read, read_n(read_fd, receiver->current_file_name,
+      SYSCALL_RET(bytes_read, read_n(read_fd, receiver->current_file_name,
                  fn_header.file_name_length), {
         mr_log_error(log_file, "Mapper", "Controller",
                      "Failed to read file name from main process");
@@ -584,7 +584,7 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
     mr_line_header_t l_header;
     ssize_t bytes_read;
     
-    SYSCALL(bytes_read, read_n(read_fd, &l_header, sizeof(l_header)), {
+    SYSCALL_RET(bytes_read, read_n(read_fd, &l_header, sizeof(l_header)), {
       mr_log_error(log_file, "Mapper", "Controller",
                    "Failed to read line header from main process");
       return -1;
@@ -619,7 +619,7 @@ int receive_line_from_main_fd(mr_log_file_t* log_file, int read_fd,
     }
 
     if (l_header.line_length > 0) {
-      SYSCALL_CHECK_CMD(read_n(read_fd, line_content, l_header.line_length), {
+      SYSCALL_RET_CHECK(read_n(read_fd, line_content, l_header.line_length), {
         mr_log_error(log_file, "Mapper", "Controller",
                      "Failed to read line data from main process");
         free(line_content);

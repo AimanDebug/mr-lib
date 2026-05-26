@@ -1,7 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#define SYSCALL(result, expression, command)                                   \
+#define SYSCALL_RET(result, expression, command)                               \
   do {                                                                         \
     if ((result = (expression)) == -1) {                                       \
       command;                                                                 \
@@ -9,7 +9,7 @@
     }                                                                          \
   } while (0)
 
-#define SYSCALL_CHECK_CMD(expression, command)                                 \
+#define SYSCALL_RET_CHECK(expression, command)                                 \
   do {                                                                         \
     if ((expression) == -1) {                                                  \
       command;                                                                 \
@@ -17,17 +17,20 @@
     }                                                                          \
   } while (0)
 
-#define SYSCALL_CHECK(expression)                                              \
+#define SYSCALL_EXIT(result, expression, command)                              \
   do {                                                                         \
-    if ((expression) == -1) {                                                  \
-      return -1;                                                               \
+    if ((result = (expression)) == -1) {                                       \
+      command;                                                                 \
+      return EXIT_FAILURE;                                                     \
     }                                                                          \
   } while (0)
 
-// For now it's just aliases
-#define MRCALL_CHECK_CMD(expression, command)                                  \
-  SYSCALL_CHECK_CMD(expression, command)
-
-#define MRCALL_CHECK(expression) SYSCALL_CHECK(expression)
+#define SYSCALL_EXIT_CHECK(expression, command)                                \
+  do {                                                                         \
+    if ((expression) == -1) {                                                  \
+      command;                                                                 \
+      return EXIT_FAILURE;                                                     \
+    }                                                                          \
+  } while (0)
 
 #endif // UTILS_H
